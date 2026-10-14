@@ -1,0 +1,157 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* Mirrors the tokens in tailwind.config.js. */
+  :root {
+    --bg: #08090a; --bg-soft: #0c0d0f; --bg-panel: #131416; --bg-hover: #1a1b1e; --bg-active: #202124;
+    --line: #1f2023; --line-strong: #2a2c30;
+    --fg: #f7f8f8; --fg-muted: #8a8f98; --fg-subtle: #62666d; --fg-faint: #4a4e55;
+    --accent: #5e6ad2; --ok: #68cc58; --warn: #f2c94c;
+    --unity: #4b9fe1; --unreal: #f28c28; --custom: #9b7bff;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1280px; height: 640px; overflow: hidden; }
+  body {
+    background: var(--bg);
+    background-image:
+      linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+    background-size: 32px 32px;
+    font-family: Inter, 'Segoe UI', sans-serif;
+    color: var(--fg);
+    letter-spacing: -0.011em;
+    -webkit-font-smoothing: antialiased;
+    position: relative;
+  }
+
+  .intro { position: absolute; left: 80px; top: 50%; transform: translateY(-50%); width: 440px; }
+  .intro img { width: 76px; height: 76px; display: block; margin-bottom: 28px; }
+  .intro h1 { font-size: 64px; font-weight: 700; letter-spacing: -0.035em; line-height: 1; }
+  .intro p { margin-top: 20px; font-size: 21px; line-height: 1.5; color: var(--fg-muted); }
+  .pills { display: flex; gap: 10px; margin-top: 30px; }
+  .pill { height: 38px; padding: 0 16px; border-radius: 7px; display: inline-flex; align-items: center;
+          font-size: 15px; font-weight: 500; border: 1px solid var(--line-strong); color: var(--fg); }
+  .pill.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .window {
+    position: absolute; left: 596px; top: 84px; width: 624px; height: 580px;
+    background: var(--bg); border: 1px solid var(--line-strong); border-radius: 12px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.6); overflow: hidden; font-size: 13px;
+  }
+  .window::after { /* fade the bottom so the cut-off reads as intentional */
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 160px;
+    background: linear-gradient(to bottom, transparent, var(--bg) 85%);
+  }
+  .head { display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 18px; border-bottom: 1px solid var(--line); }
+  .head b { font-weight: 600; font-size: 14px; }
+  .head .count { color: var(--fg-faint); font-variant-numeric: tabular-nums; }
+  .toolbar { display: flex; gap: 8px; padding: 10px 18px; border-bottom: 1px solid var(--line); }
+  .search { width: 200px; height: 30px; border: 1px solid var(--line); background: var(--bg-soft); border-radius: 6px;
+            display: flex; align-items: center; gap: 8px; padding: 0 10px; color: var(--fg-faint); }
+  .seg { display: flex; gap: 2px; border: 1px solid var(--line); background: var(--bg-soft); border-radius: 6px; padding: 2px; }
+  .seg span { height: 24px; padding: 0 9px; border-radius: 4px; display: flex; align-items: center; gap: 6px;
+              font-size: 12px; font-weight: 500; color: var(--fg-subtle); }
+  .seg span.on { background: var(--bg-active); color: var(--fg); }
+
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+  .table { padding: 0 8px; }
+  .row { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 6px; position: relative; }
+  .row.th { height: 32px; border-bottom: 1px solid var(--line); border-radius: 0; font-size: 11px; font-weight: 500; color: var(--fg-subtle); margin-bottom: 4px; }
+  .row.hover { background: var(--bg-hover); }
+  .c-star { width: 20px; display: flex; justify-content: center; color: var(--fg-faint); }
+  .c-star.fav { color: var(--warn); }
+  .c-name { width: 170px; min-width: 0; }
+  .c-name .n { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .c-name .p { font-size: 11px; color: var(--fg-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .c-tags { width: 112px; display: flex; gap: 4px; overflow: hidden; }
+  .chip { font-size: 10px; font-weight: 500; color: var(--fg-subtle); border: 1px solid var(--line); background: var(--bg-soft);
+          border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
+  .c-engine { width: 112px; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg-muted); }
+  .c-version { display: none; width: 96px; font-size: 12px; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+  .c-branch { width: 120px; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg-muted); white-space: nowrap; }
+  .c-branch svg { color: var(--fg-subtle); flex-shrink: 0; }
+  .c-mod { display: none; width: 90px; font-size: 12px; color: var(--fg-subtle); }
+  .actions { position: absolute; right: 0; top: 0; bottom: 0; display: flex; align-items: center; gap: 4px; padding: 0 8px 0 40px;
+             background: linear-gradient(to left, var(--bg-hover) 85%, transparent); border-radius: 0 6px 6px 0; }
+  .launch { height: 28px; display: flex; border-radius: 6px; overflow: hidden; background: var(--accent); color: #fff; font-weight: 500; }
+  .launch span { display: flex; align-items: center; gap: 6px; padding: 0 10px; }
+  .launch span + span { border-left: 1px solid rgba(0,0,0,.3); padding: 0 8px; }
+  .icon { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: var(--fg-subtle); }
+
+  .build { padding: 2px 12px 8px 44px; }
+  .build .line { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--fg-muted); }
+  .build .bar { margin-top: 6px; height: 3px; border-radius: 3px; background: var(--bg-hover); overflow: hidden; }
+  .build .bar div { height: 100%; width: 62%; background: var(--accent); }
+</style>
+</head>
+<body>
+  <div class="intro">
+    <img src="../../build/icon.svg" alt="" />
+    <h1>GameBridge</h1>
+    <p>One launcher for your Unity, Unreal and custom engine projects. Open, build and ship them from one list.</p>
+    <div class="pills">
+      <span class="pill primary">Windows</span>
+      <span class="pill">Free for commercial use</span>
+    </div>
+  </div>
+
+  <div class="window">
+    <div class="head"><b>Library</b><span class="count">10</span></div>
+    <div class="toolbar">
+      <div class="search">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        Search projects…
+      </div>
+      <div class="seg">
+        <span class="on">All</span>
+        <span><i class="dot" style="background:var(--unity)"></i>Unity</span>
+        <span><i class="dot" style="background:var(--unreal)"></i>Unreal</span>
+        <span><i class="dot" style="background:var(--custom)"></i>Custom</span>
+      </div>
+    </div>
+
+    <div class="table" id="table"></div>
+  </div>
+
+<script>
+  const star = (fav) =>
+    `<svg width="14" height="14" viewBox="0 0 24 24" fill="${fav ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"/></svg>`
+  const branchIcon = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="7" r="2"/><path d="M6 7v10M18 9c0 5-12 3-12 8"/></svg>`
+  const engines = { unity: ['Unity', 'var(--unity)'], unreal: ['Unreal', 'var(--unreal)'], custom: ['C++ / MSBuild', 'var(--custom)'] }
+
+  const projects = [
+    { name: 'Tidewater', path: 'D:\\Games\\Tidewater', fav: 1, tags: ['Active'], engine: 'unity', ver: '6000.4.4f1', branch: 'main', dirty: 1, mod: '2h ago', build: true },
+    { name: 'Ember Hollow', path: 'D:\\Games\\EmberHollow', fav: 1, tags: ['Active', 'Jam'], engine: 'unreal', ver: '5.5', branch: 'lighting-pass', dirty: 1, mod: '1d ago', hover: true },
+    { name: 'Kestrel', path: 'D:\\Engines\\Kestrel', tags: ['Tools'], engine: 'custom', ver: '—', branch: 'dev', mod: '3d ago' },
+    { name: 'Signal Lost', path: 'D:\\Games\\SignalLost', tags: ['Prototype'], engine: 'unity', ver: '6000.2.0f1', branch: 'main', mod: '5d ago' },
+    { name: 'Moss & Iron', path: 'D:\\Games\\MossAndIron', tags: ['Prototype'], engine: 'unity', ver: '6000.0.44f1', branch: '—', mod: '2w ago' },
+    { name: 'Driftline', path: 'D:\\Games\\Driftline', tags: ['Archived'], engine: 'unreal', ver: '5.4', branch: 'main', mod: '1mo ago' },
+    { name: 'Paper Moons', path: 'D:\\Games\\PaperMoons', tags: ['Prototype'], engine: 'unity', ver: '2022.3.45f1', branch: 'main', mod: '2mo ago' },
+    { name: 'Lanternfish', path: 'D:\\Games\\Lanternfish', tags: ['Prototype'], engine: 'unity', ver: '6000.4.4f1', branch: '—', mod: '4mo ago' },
+    { name: 'Gravel', path: 'D:\\Engines\\Gravel', tags: ['Tools'], engine: 'custom', ver: '—', branch: 'main', mod: 'last year' }
+  ]
+
+  const rows = [`<div class="row th"><span class="c-star">${star(0)}</span><span class="c-name">Name</span><span class="c-tags">Tags</span><span class="c-engine">Engine</span><span class="c-version">Version</span><span class="c-branch">Branch</span><span class="c-mod">Modified ↓</span></div>`]
+  for (const p of projects) {
+    const [en, ec] = engines[p.engine]
+    rows.push(`<div class="row${p.hover ? ' hover' : ''}">
+      <span class="c-star${p.fav ? ' fav' : ''}">${star(p.fav)}</span>
+      <div class="c-name"><div class="n">${p.name}</div><div class="p">${p.path}</div></div>
+      <div class="c-tags">${p.tags.map((t) => `<span class="chip">${t}</span>`).join('')}</div>
+      <div class="c-engine"><i class="dot" style="background:${ec}"></i>${en}</div>
+      <div class="c-version">${p.ver}</div>
+      <div class="c-branch">${p.branch === '—' ? '<span style="color:var(--fg-faint)">—</span>' : `${branchIcon}${p.branch}${p.dirty ? '<i class="dot" style="background:var(--warn)"></i>' : ''}`}</div>
+      <div class="c-mod">${p.mod}</div>
+      ${p.hover ? `<div class="actions"><span class="icon">&lt;/&gt;</span><span class="launch"><span>▶ Launch</span><span>&lt;/&gt;</span></span></div>` : ''}
+    </div>`)
+    if (p.build)
+      rows.push(`<div class="build"><div class="line"><span style="color:var(--accent)">●</span>Compiling scripts · StandaloneWindows64</div><div class="bar"><div></div></div></div>`)
+  }
+  document.getElementById('table').innerHTML = rows.join('')
+</script>
+</body>
+</html>

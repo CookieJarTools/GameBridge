@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  @apply bg-bg text-fg font-sans text-base tracking-tight antialiased;
+  overflow: hidden;
+}
+
+::selection {
+  background: rgba(94, 106, 210, 0.35);
+}
+
+/* Hairline scrollbars that stay out of the way until hovered. */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  @apply rounded-full;
+  background: #26282c;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #33363b;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Horizontal strip whose scrollbar is a hairline, shown only on hover. */
+.scroll-x-thin::-webkit-scrollbar {
+  height: 3px;
+}
+.scroll-x-thin::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+.scroll-x-thin:hover::-webkit-scrollbar-thumb {
+  background: #33363b;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+@layer components {
+  /* ---------------------------------------------------------- buttons --- */
+
+  .btn {
+    @apply inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-base
+      font-medium text-fg-muted transition-colors duration-100
+      disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  /* Default: an almost-invisible surface that firms up on hover. */
+  .btn-secondary {
+    @apply btn bg-bg-hover/60 text-fg-muted hover:bg-bg-active hover:text-fg;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent text-accent-fg hover:bg-accent-hover;
+  }
+
+  .btn-ghost {
+    @apply btn hover:bg-bg-hover hover:text-fg;
+  }
+
+  .btn-danger {
+    @apply btn bg-danger/10 text-danger hover:bg-danger/20;
+  }
+
+  /* Square icon-only button, sized to line up with .btn. */
+  .btn-icon {
+    @apply inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md
+      text-fg-subtle transition-colors duration-100 hover:bg-bg-hover hover:text-fg;
+  }
+
+  .icon-btn {
+    @apply btn-icon hover:bg-danger/10 hover:text-danger;
+  }
+
+  .nav-btn {
+    @apply btn-icon;
+  }
+
+  /* ----------------------------------------------------------- inputs --- */
+
+  .input {
+    @apply h-8 w-full rounded-md border border-line bg-bg-soft px-2.5 text-base text-fg
+      outline-none transition-colors placeholder:text-fg-faint
+      focus:border-accent/70 focus:bg-bg-panel;
+  }
+
+  textarea.input {
+    @apply h-auto py-2 leading-relaxed;
+  }
+
+  select.input {
+    @apply cursor-pointer appearance-none bg-no-repeat pr-8;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%238a8f98' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
+    background-position: right 9px center;
+  }
+
+  /* --------------------------------------------------------- surfaces --- */
+
+  /* Elevated container: modals, popovers, grouped content. */
+  .panel {
+    @apply rounded-lg border border-line bg-bg-panel;
+  }
+
+  /* One row in a list — the workhorse of the whole UI. */
+  .row {
+    @apply flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left
+      text-base text-fg-muted transition-colors duration-100
+      hover:bg-bg-hover hover:text-fg;
+  }
+
+  .row-selected {
+    @apply bg-bg-active text-fg;
+  }
+
+  /* Tiny uppercase group heading. */
+  .section-label {
+    @apply text-2xs font-medium uppercase tracking-wider text-fg-faint;
+  }
+
+  .chip {
+    @apply inline-flex shrink-0 items-center gap-1 rounded border border-line
+      bg-bg-soft px-1.5 py-0.5 text-2xs font-medium text-fg-subtle;
+  }
+
+  .kbd {
+    @apply inline-flex h-4 min-w-4 items-center justify-center rounded border
+      border-line bg-bg-soft px-1 font-sans text-2xs text-fg-subtle;
+  }
+
+  /* Count badge on a nav item. */
+  .badge {
+    @apply ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded
+      px-1 text-2xs font-medium tabular-nums;
+  }
+}
+
+@keyframes loading {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}

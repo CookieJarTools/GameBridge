@@ -1,0 +1,59 @@
+{
+  "name": "gamebridge",
+  "version": "0.2.0",
+  "description": "A modern launcher for Unity, Unreal, and custom game engines.",
+  "main": "./out/main/index.js",
+  "type": "module",
+  "author": "Joseph Cook",
+  "license": "PolyForm-Shield-1.0.0",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
+    "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
+    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "generate:icons": "node scripts/generate-icons.mjs",
+    "generate:banner": "electron scripts/render-banner.mjs",
+    "dist": "electron-vite build && electron-builder --win"
+  },
+  "build": {
+    "appId": "com.gamebridge.launcher",
+    "productName": "GameBridge",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist/${version}"
+    },
+    "files": [
+      "out/**"
+    ],
+    "extraResources": [
+      "build/icon.ico"
+    ],
+    "win": {
+      "icon": "build/icon.ico"
+    }
+  },
+  "dependencies": {
+    "lucide-react": "^0.469.0",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "electron": "^34.0.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "png-to-ico": "^3.0.2",
+    "postcss": "^8.4.49",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11"
+  }
+}
