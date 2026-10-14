@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { join, basename } from 'path'
+import { hardenWebContents, lockAppWindow, openExternalSafe } from './security'
 import { readFile } from 'fs/promises'
 import type {
   AppData,
@@ -109,10 +110,7 @@ function createWindow(): void {
     if (mainWindow === win) mainWindow = null
   })
 
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url)
-    return { action: 'deny' }
-  })
+  lockAppWindow(win)
 
   if (process.env['ELECTRON_RENDERER_URL']) {
     win.loadURL(process.env['ELECTRON_RENDERER_URL'])
@@ -347,7 +345,7 @@ function registerIpc(): void {
   })
 
   ipcMain.handle('shell:open-external', async (_e, url: string): Promise<void> => {
-    await shell.openExternal(url)
+    await openExternalSafe(url)
   })
 
   // --- Git ---
@@ -608,6 +606,7 @@ function registerIpc(): void {
 }
 
 app.whenReady().then(() => {
+  hardenWebContents()
   // Ensures Windows groups the app under our identity/icon instead of electron.exe.
   if (process.platform === 'win32') app.setAppUserModelId('com.gamebridge.launcher')
   const send = (channel: string, payload: unknown): void => {
