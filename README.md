@@ -64,7 +64,7 @@ Fab, the Unity Asset Store, Sketchfab, itch.io, Poly Haven, Kenney and OpenGameA
 
 ## Getting started
 
-1. Download the installer from the [latest release](https://github.com/CookieJarTools/GameBridge/releases/latest) and run it.
+1. Download **GameBridge-Setup.exe** from the [latest release](https://github.com/CookieJarTools/GameBridge/releases/latest) and run it. You can pick where it installs, and it adds Start menu and desktop shortcuts. No admin rights needed.
 2. Open **Settings** and press **Auto-detect engines** and **Auto-detect IDEs**.
 3. Add the folders that contain your projects as **scan roots**.
 4. Go back to **Library** and press **Scan**.
@@ -85,7 +85,7 @@ npm run dev
 | `npm run dev` | Run with hot reload |
 | `npm run build` | Build production bundles into `out/` |
 | `npm run typecheck` | Type-check the main process and the renderer |
-| `npm run dist` | Package a Windows installer into `dist/<version>/` |
+| `npm run dist` | Build the Windows installer, `dist/<version>/GameBridge-Setup-<version>.exe` |
 | `npm run generate:icons` | Rebuild `build/icon.ico` and `icon.png` from `build/icon.svg` |
 | `npm run generate:banner` | Rebuild `docs/banner.png` from `scripts/banner/banner.html` |
 
