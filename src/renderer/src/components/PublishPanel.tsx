@@ -83,7 +83,7 @@ export function PublishPanel({
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {!succeeded && (
-          <div className="flex items-start gap-2 rounded-md border border-warn/25 bg-warn/[0.06] px-2.5 py-2 text-xs leading-relaxed text-[#f6e6b4]">
+          <div className="flex items-start gap-2 rounded-md border border-warn/25 bg-warn/6 px-2.5 py-2 text-xs leading-relaxed text-[#f6e6b4]">
             <AlertTriangle size={12} className="mt-0.5 shrink-0 text-warn" />
             <span>Only a build that succeeded can be uploaded.</span>
           </div>

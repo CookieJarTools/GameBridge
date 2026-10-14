@@ -169,7 +169,7 @@ export function CleanupPanel({
             {report.caveats.map((c) => (
               <div
                 key={c}
-                className="flex items-start gap-2 rounded-md border border-warn/25 bg-warn/[0.05] px-2.5 py-2 text-xs leading-relaxed text-[#f6e6b4]"
+                className="flex items-start gap-2 rounded-md border border-warn/25 bg-warn/5 px-2.5 py-2 text-xs leading-relaxed text-[#f6e6b4]"
               >
                 <AlertTriangle size={12} className="mt-0.5 shrink-0 text-warn" />
                 <span>{c}</span>

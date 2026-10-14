@@ -94,7 +94,7 @@ export function UnityEditorsSection(): JSX.Element {
           <span className="text-xs font-medium text-fg-muted">
             Installed editors ({installed.length})
           </span>
-          <button onClick={refreshInstalled} className="btn-secondary !py-1 !px-2 text-xs">
+          <button onClick={refreshInstalled} className="btn-secondary py-1! px-2! text-xs">
             <RefreshCw size={13} /> Refresh
           </button>
         </div>
@@ -118,7 +118,7 @@ export function UnityEditorsSection(): JSX.Element {
           <button
             onClick={loadReleases}
             disabled={loading}
-            className="btn-secondary !py-1 !px-2 text-xs ml-auto"
+            className="btn-secondary py-1! px-2! text-xs ml-auto"
           >
             {loading ? <Loader2 size={13} className="animate-spin" /> : <DownloadCloud size={13} />}
             {releases ? 'Reload list' : 'Browse versions'}

@@ -274,7 +274,7 @@ export function DataView(): JSX.Element {
                 value={rawDraft}
                 onChange={(e) => setRawDraft(e.target.value)}
                 spellCheck={false}
-                className="flex-1 resize-none bg-bg p-4 font-mono text-[11.5px] leading-[1.6] text-fg-muted outline-none"
+                className="flex-1 resize-none bg-bg p-4 font-mono text-[11.5px] leading-[1.6] text-fg-muted outline-hidden"
               />
             ) : (
               <>
@@ -312,8 +312,8 @@ function Notice({
 }): JSX.Element {
   const style =
     tone === 'danger'
-      ? 'border-danger/25 bg-danger/[0.06] text-[#f7c9cb]'
-      : 'border-warn/25 bg-warn/[0.06] text-[#f6e6b4]'
+      ? 'border-danger/25 bg-danger/6 text-[#f7c9cb]'
+      : 'border-warn/25 bg-warn/6 text-[#f6e6b4]'
   return (
     <div className={`flex items-start gap-2 rounded-md border px-2.5 py-1.5 text-xs ${style}`}>
       <AlertTriangle size={12} className="mt-0.5 shrink-0" />

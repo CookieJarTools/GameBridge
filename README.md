@@ -270,7 +270,7 @@ src/
 
 The UI borrows from Linear: near-black surfaces, thin borders instead of shadows, four levels of text colour, a 13px base size and one accent colour (`#5E6AD2`) used only for selection, focus and primary actions. Engine colours are the one exception.
 
-Colours live in [`tailwind.config.js`](tailwind.config.js) and the shared component classes (`.btn-*`, `.input`, `.panel`, `.row`, `.chip` and so on) in [`src/renderer/src/index.css`](src/renderer/src/index.css). New UI should use those classes instead of one-off styles.
+Colours, type sizes and radii are defined in the `@theme` block at the top of [`src/renderer/src/index.css`](src/renderer/src/index.css), along with the shared component classes (`btn-*`, `input`, `panel`, `row`, `chip` and so on). New UI should use those classes instead of one-off styles.
 
 ## Ideas for later
 

@@ -25,12 +25,12 @@ export type ColumnId = (typeof COLUMNS)[number]['id']
  */
 export const COLS = {
   star: 'w-5 shrink-0',
-  name: 'w-[var(--col-name)] min-w-0 shrink-0',
-  tags: 'w-[var(--col-tags)] min-w-0 shrink-0',
-  engine: 'flex w-[var(--col-engine)] min-w-0 shrink-0',
-  version: 'w-[var(--col-version)] min-w-0 shrink-0',
-  branch: 'flex w-[var(--col-branch)] min-w-0 shrink-0',
-  modified: 'w-[var(--col-modified)] min-w-0 shrink-0'
+  name: 'w-(--col-name) min-w-0 shrink-0',
+  tags: 'w-(--col-tags) min-w-0 shrink-0',
+  engine: 'flex w-(--col-engine) min-w-0 shrink-0',
+  version: 'w-(--col-version) min-w-0 shrink-0',
+  branch: 'flex w-(--col-branch) min-w-0 shrink-0',
+  modified: 'w-(--col-modified) min-w-0 shrink-0'
 }
 
 interface Props {
@@ -139,7 +139,7 @@ export function ProjectRow({ project, onEdit }: Props): JSX.Element {
         </span>
 
         {/* Actions float over the right of the row on hover, so they cost no column space. */}
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-r-md bg-[linear-gradient(to_left,theme(colors.bg.hover)_85%,transparent)] pl-10 pr-2 opacity-0 transition-opacity focus-within:pointer-events-auto focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-0.5 rounded-r-md bg-[linear-gradient(to_left,var(--color-bg-hover)_85%,transparent)] pl-10 pr-2 opacity-0 transition-opacity focus-within:pointer-events-auto focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
           <button
             onClick={(e) => {
               e.stopPropagation()

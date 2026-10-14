@@ -50,21 +50,21 @@ const ICON = 12
 const LEVELS: Record<LogLevel, LevelStyle> = {
   error: {
     label: 'Errors',
-    row: 'bg-danger/[0.06] border-l-danger',
+    row: 'bg-danger/6 border-l-danger',
     icon: <XCircle size={ICON} className="text-danger" />,
     text: 'text-[#f7c9cb]',
     chip: 'border-danger/30 bg-danger/10 text-danger'
   },
   warn: {
     label: 'Warnings',
-    row: 'bg-warn/[0.05] border-l-warn',
+    row: 'bg-warn/5 border-l-warn',
     icon: <AlertTriangle size={ICON} className="text-warn" />,
     text: 'text-[#f6e6b4]',
     chip: 'border-warn/30 bg-warn/10 text-warn'
   },
   success: {
     label: 'Success',
-    row: 'bg-ok/[0.05] border-l-ok/70',
+    row: 'bg-ok/5 border-l-ok/70',
     icon: <CheckCircle2 size={ICON} className="text-ok" />,
     text: 'text-[#cceec4]',
     chip: 'border-ok/30 bg-ok/10 text-ok'
@@ -227,9 +227,9 @@ const LogRow = memo(function LogRow({
       data-log-index={entry.index}
       className={`group border-l-2 ${s.row} ${
         activeMatch ? 'ring-1 ring-inset ring-warn/60' : ''
-      } hover:bg-white/[0.02]`}
+      } hover:bg-white/2`}
     >
-      <div className="flex items-start gap-2 pl-1.5 pr-3 py-[1px]">
+      <div className="flex items-start gap-2 pl-1.5 pr-3 py-px">
         {/* Fold control / severity marker */}
         <button
           onClick={() => hasStack && onToggle(entry.index)}
@@ -251,32 +251,32 @@ const LogRow = memo(function LogRow({
         {hasStack && <span className="mt-[3px] shrink-0">{s.icon}</span>}
 
         {mode !== 'compact' && (
-          <span className="mt-[1px] w-10 shrink-0 select-none text-right tabular-nums text-fg-faint/60">
+          <span className="mt-px w-10 shrink-0 select-none text-right tabular-nums text-fg-faint/60">
             {entry.index + 1}
           </span>
         )}
 
         {/* Raw keeps the timestamp inside the line, so no gutter for it there. */}
         {showTime && mode === 'pretty' && entry.time && (
-          <span className="mt-[1px] shrink-0 tabular-nums text-fg-faint">{entry.time}</span>
+          <span className="mt-px shrink-0 tabular-nums text-fg-faint">{entry.time}</span>
         )}
 
         {!raw && entry.category && (
-          <span className="mt-[1px] max-w-[10rem] shrink-0 truncate text-[#79b8ff]/70">
+          <span className="mt-px max-w-40 shrink-0 truncate text-[#79b8ff]/70">
             {entry.category}
           </span>
         )}
 
         <span
           className={`min-w-0 flex-1 ${s.text} ${
-            wrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre overflow-x-auto'
+            wrap ? 'whitespace-pre-wrap wrap-break-word' : 'whitespace-pre overflow-x-auto'
           }`}
         >
           <Colored text={body} re={re} active={activeMatch} plain={raw} />
         </span>
 
         {count > 1 && (
-          <span className="mt-[1px] shrink-0 rounded-full bg-bg-hover px-1.5 text-2xs text-fg-muted">
+          <span className="mt-px shrink-0 rounded-full bg-bg-hover px-1.5 text-2xs text-fg-muted">
             ×{count}
           </span>
         )}
@@ -284,7 +284,7 @@ const LogRow = memo(function LogRow({
         {hasStack && !expanded && (
           <button
             onClick={() => onToggle(entry.index)}
-            className="mt-[1px] shrink-0 rounded-full border border-line bg-bg-soft px-1.5 text-2xs text-fg-subtle hover:text-fg"
+            className="mt-px shrink-0 rounded-full border border-line bg-bg-soft px-1.5 text-2xs text-fg-subtle hover:text-fg"
           >
             {entry.stack.length} frame{entry.stack.length === 1 ? '' : 's'}
           </button>
@@ -297,7 +297,7 @@ const LogRow = memo(function LogRow({
             <div
               key={i}
               className={`text-fg-subtle ${
-                wrap ? 'whitespace-pre-wrap break-words' : 'whitespace-pre overflow-x-auto'
+                wrap ? 'whitespace-pre-wrap wrap-break-word' : 'whitespace-pre overflow-x-auto'
               }`}
             >
               <Colored text={f} re={re} active={false} />
@@ -534,7 +534,7 @@ export function LogViewer({ lines }: { lines: SourceLine[] }): JSX.Element {
 
         {/* Search */}
         <div
-          className={`flex h-6 min-w-[13rem] max-w-md flex-1 items-center gap-1.5 rounded-md border bg-bg-soft px-2 ${
+          className={`flex h-6 min-w-52 max-w-md flex-1 items-center gap-1.5 rounded-md border bg-bg-soft px-2 ${
             regexInvalid ? 'border-danger/60' : 'border-line focus-within:border-accent/60'
           }`}
         >
@@ -548,7 +548,7 @@ export function LogViewer({ lines }: { lines: SourceLine[] }): JSX.Element {
               if (e.key === 'Escape') setQuery('')
             }}
             placeholder="Filter lines…  (Ctrl+F)"
-            className="min-w-0 flex-1 bg-transparent text-fg outline-none placeholder:text-fg-faint"
+            className="min-w-0 flex-1 bg-transparent text-fg outline-hidden placeholder:text-fg-faint"
           />
           {query && (
             <>

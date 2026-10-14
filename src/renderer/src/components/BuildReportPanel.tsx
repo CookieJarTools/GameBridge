@@ -90,8 +90,8 @@ export function BuildReportPanel({ build }: { build: BuildUi }): JSX.Element {
                   key={i}
                   className={`flex items-start gap-2 rounded-md border px-2.5 py-2 text-xs ${
                     error
-                      ? 'border-danger/25 bg-danger/[0.06] text-[#f7c9cb]'
-                      : 'border-warn/25 bg-warn/[0.06] text-[#f6e6b4]'
+                      ? 'border-danger/25 bg-danger/6 text-[#f7c9cb]'
+                      : 'border-warn/25 bg-warn/6 text-[#f6e6b4]'
                   }`}
                 >
                   {error ? (
@@ -99,7 +99,7 @@ export function BuildReportPanel({ build }: { build: BuildUi }): JSX.Element {
                   ) : (
                     <AlertTriangle size={12} className="mt-0.5 shrink-0 text-warn" />
                   )}
-                  <span className="whitespace-pre-wrap break-words font-mono">{m.content}</span>
+                  <span className="whitespace-pre-wrap wrap-break-word font-mono">{m.content}</span>
                 </div>
               )
             })}

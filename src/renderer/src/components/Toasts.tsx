@@ -6,7 +6,7 @@ export function Toasts(): JSX.Element {
   const dismiss = useStore((s) => s.dismissToast)
 
   return (
-    <div className="fixed bottom-4 right-4 z-[60] flex w-[320px] flex-col gap-1.5">
+    <div className="fixed bottom-4 right-4 z-60 flex w-[320px] flex-col gap-1.5">
       {toasts.map((t) => (
         <div
           key={t.id}

@@ -1,154 +1,246 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-:root {
-  color-scheme: dark;
+@theme {
+  --color-bg: #08090a;
+  --color-bg-soft: #0c0d0f;
+  --color-bg-panel: #131416;
+  --color-bg-hover: #1a1b1e;
+  --color-bg-active: #202124;
+
+  --color-line: #1f2023;
+  --color-line-strong: #2a2c30;
+
+  --color-fg: #f7f8f8;
+  --color-fg-muted: #8a8f98;
+  --color-fg-subtle: #62666d;
+  --color-fg-faint: #4a4e55;
+
+  --color-accent: #5e6ad2;
+  --color-accent-hover: #6e79db;
+  --color-accent-soft: #2a2f5c;
+  --color-accent-fg: #ffffff;
+
+  --color-ok: #68cc58;
+  --color-warn: #f2c94c;
+  --color-danger: #f2555a;
+  --color-info: #4ea7fc;
+  --color-unity: #4b9fe1;
+  --color-unreal: #f28c28;
+  --color-custom: #9b7bff;
+
+  --font-sans: Inter, Segoe UI, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --text-2xs: 10px;
+  --text-2xs--line-height: 14px;
+  --text-xs: 11px;
+  --text-xs--line-height: 15px;
+  --text-sm: 12px;
+  --text-sm--line-height: 16px;
+  --text-base: 13px;
+  --text-base--line-height: 18px;
+  --text-md: 14px;
+  --text-md--line-height: 20px;
+  --text-lg: 15px;
+  --text-lg--line-height: 22px;
+  --text-xl: 17px;
+  --text-xl--line-height: 24px;
+  --text-2xl: 21px;
+  --text-2xl--line-height: 28px;
+
+  --radius: 6px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 12px;
+
+  --tracking-tight: -0.011em;
+  --tracking-wider: 0.06em;
+
+  --shadow-panel: 0 10px 32px rgba(0, 0, 0, 0.5);
+  --shadow-popover: 0 16px 64px rgba(0, 0, 0, 0.65);
 }
 
-html,
-body,
-#root {
-  height: 100%;
-  margin: 0;
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
 }
 
-body {
-  @apply bg-bg text-fg font-sans text-base tracking-tight antialiased;
-  overflow: hidden;
-}
+/* ---------------------------------------------------------- buttons --- */
 
-::selection {
-  background: rgba(94, 106, 210, 0.35);
-}
-
-/* Hairline scrollbars that stay out of the way until hovered. */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-thumb {
-  @apply rounded-full;
-  background: #26282c;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #33363b;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-/* Horizontal strip whose scrollbar is a hairline, shown only on hover. */
-.scroll-x-thin::-webkit-scrollbar {
-  height: 3px;
-}
-.scroll-x-thin::-webkit-scrollbar-thumb {
-  background: transparent;
-}
-.scroll-x-thin:hover::-webkit-scrollbar-thumb {
-  background: #33363b;
-}
-
-.no-drag {
-  -webkit-app-region: no-drag;
-}
-
-@layer components {
-  /* ---------------------------------------------------------- buttons --- */
-
-  .btn {
-    @apply inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-base
+@utility btn {
+  @apply inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-base
       font-medium text-fg-muted transition-colors duration-100
       disabled:cursor-not-allowed disabled:opacity-40;
-  }
+}
 
+@utility btn-secondary {
   /* Default: an almost-invisible surface that firms up on hover. */
-  .btn-secondary {
-    @apply btn bg-bg-hover/60 text-fg-muted hover:bg-bg-active hover:text-fg;
-  }
+  @apply btn bg-bg-hover/60 text-fg-muted hover:bg-bg-active hover:text-fg;
+}
 
-  .btn-primary {
-    @apply btn bg-accent text-accent-fg hover:bg-accent-hover;
-  }
+@utility btn-primary {
+  @apply btn bg-accent text-accent-fg hover:bg-accent-hover;
+}
 
-  .btn-ghost {
-    @apply btn hover:bg-bg-hover hover:text-fg;
-  }
+@utility btn-ghost {
+  @apply btn hover:bg-bg-hover hover:text-fg;
+}
 
-  .btn-danger {
-    @apply btn bg-danger/10 text-danger hover:bg-danger/20;
-  }
+@utility btn-danger {
+  @apply btn bg-danger/10 text-danger hover:bg-danger/20;
+}
 
+@utility btn-icon {
   /* Square icon-only button, sized to line up with .btn. */
-  .btn-icon {
-    @apply inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md
+  @apply inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md
       text-fg-subtle transition-colors duration-100 hover:bg-bg-hover hover:text-fg;
-  }
+}
 
-  .icon-btn {
-    @apply btn-icon hover:bg-danger/10 hover:text-danger;
-  }
+@utility icon-btn {
+  @apply btn-icon hover:bg-danger/10 hover:text-danger;
+}
 
-  .nav-btn {
-    @apply btn-icon;
-  }
+@utility nav-btn {
+  @apply btn-icon;
+}
 
-  /* ----------------------------------------------------------- inputs --- */
+/* ----------------------------------------------------------- inputs --- */
 
-  .input {
-    @apply h-8 w-full rounded-md border border-line bg-bg-soft px-2.5 text-base text-fg
-      outline-none transition-colors placeholder:text-fg-faint
+@utility input {
+  @apply h-8 w-full rounded-md border border-line bg-bg-soft px-2.5 text-base text-fg
+      outline-hidden transition-colors placeholder:text-fg-faint
       focus:border-accent/70 focus:bg-bg-panel;
-  }
 
-  textarea.input {
+  textarea& {
     @apply h-auto py-2 leading-relaxed;
   }
 
-  select.input {
+  select& {
     @apply cursor-pointer appearance-none bg-no-repeat pr-8;
     background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%238a8f98' stroke-width='1.6' stroke-linecap='round'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
     background-position: right 9px center;
   }
+}
 
-  /* --------------------------------------------------------- surfaces --- */
+/* --------------------------------------------------------- surfaces --- */
 
+@utility panel {
   /* Elevated container: modals, popovers, grouped content. */
-  .panel {
-    @apply rounded-lg border border-line bg-bg-panel;
-  }
+  @apply rounded-lg border border-line bg-bg-panel;
+}
 
+@utility row {
   /* One row in a list — the workhorse of the whole UI. */
-  .row {
-    @apply flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left
+  @apply flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left
       text-base text-fg-muted transition-colors duration-100
       hover:bg-bg-hover hover:text-fg;
-  }
+}
 
-  .row-selected {
-    @apply bg-bg-active text-fg;
-  }
+@utility row-selected {
+  @apply bg-bg-active text-fg;
+}
 
+@utility section-label {
   /* Tiny uppercase group heading. */
-  .section-label {
-    @apply text-2xs font-medium uppercase tracking-wider text-fg-faint;
-  }
+  @apply text-2xs font-medium uppercase tracking-wider text-fg-faint;
+}
 
-  .chip {
-    @apply inline-flex shrink-0 items-center gap-1 rounded border border-line
+@utility chip {
+  @apply inline-flex shrink-0 items-center gap-1 rounded border border-line
       bg-bg-soft px-1.5 py-0.5 text-2xs font-medium text-fg-subtle;
-  }
+}
 
-  .kbd {
-    @apply inline-flex h-4 min-w-4 items-center justify-center rounded border
+@utility kbd {
+  @apply inline-flex h-4 min-w-4 items-center justify-center rounded border
       border-line bg-bg-soft px-1 font-sans text-2xs text-fg-subtle;
+}
+
+@utility badge {
+  /* Count badge on a nav item. */
+  @apply ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded
+      px-1 text-2xs font-medium tabular-nums;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
   }
 
-  /* Count badge on a nav item. */
-  .badge {
-    @apply ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded
-      px-1 text-2xs font-medium tabular-nums;
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
   }
+
+  body {
+    @apply bg-bg text-fg font-sans text-base tracking-tight antialiased;
+    overflow: hidden;
+  }
+
+  ::selection {
+    background: rgba(94, 106, 210, 0.35);
+  }
+
+  /* Hairline scrollbars that stay out of the way until hovered. */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full;
+    background: #26282c;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #33363b;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* Tailwind 4 dropped the pointer cursor on buttons; this UI relies on it. */
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  /* Tailwind 4 fades placeholders from the text colour; keep v3's grey. */
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-fg-faint);
+  }
+}
+
+/* Horizontal strip whose scrollbar is a hairline, shown only on hover. */
+@utility scroll-x-thin {
+  &::-webkit-scrollbar {
+    height: 3px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: transparent;
+  }
+  &:hover::-webkit-scrollbar-thumb {
+    background: #33363b;
+  }
+}
+
+@utility no-drag {
+  -webkit-app-region: no-drag;
 }
 
 @keyframes loading {

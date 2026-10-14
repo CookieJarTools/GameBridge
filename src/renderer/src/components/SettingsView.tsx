@@ -165,7 +165,7 @@ export function SettingsView(): JSX.Element {
               ides={settings.ides}
               onChange={(id) => update((s) => (s.defaultIdeId = id || undefined))}
             />
-            <p className="text-[11px] text-fg-subtle mt-1.5 pl-[7.75rem]">
+            <p className="text-[11px] text-fg-subtle mt-1.5 pl-31">
               Fallback used by the split-launch button when an engine has no IDE of its own.
             </p>
           </div>
@@ -670,7 +670,7 @@ function InlineIdeSelect({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="px-2.5 py-1.5 rounded-lg bg-bg border border-line text-xs text-fg outline-none focus:border-accent/70"
+      className="px-2.5 py-1.5 rounded-lg bg-bg border border-line text-xs text-fg outline-hidden focus:border-accent/70"
     >
       <option value="">Use default IDE</option>
       {ides.map((i) => (

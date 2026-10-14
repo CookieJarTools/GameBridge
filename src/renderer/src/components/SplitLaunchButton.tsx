@@ -18,7 +18,7 @@ export function SplitLaunchButton({ project }: { project: Project }): JSX.Elemen
           launch(project, 'project')
         }}
         title="Open project"
-        className="flex items-center gap-1.5 bg-bg-active px-2.5 text-base font-medium text-fg transition-colors group-hover:bg-accent group-hover:text-accent-fg hover:!bg-accent-hover"
+        className="flex items-center gap-1.5 bg-bg-active px-2.5 text-base font-medium text-fg transition-colors group-hover:bg-accent group-hover:text-accent-fg hover:bg-accent-hover!"
       >
         <Play size={12} fill="currentColor" />
         Launch
@@ -30,7 +30,7 @@ export function SplitLaunchButton({ project }: { project: Project }): JSX.Elemen
           launch(project, 'project+ide')
         }}
         title="Open project + IDE"
-        className="flex items-center bg-bg-active px-2 text-fg transition-colors group-hover:bg-accent group-hover:text-accent-fg hover:!bg-accent-hover"
+        className="flex items-center bg-bg-active px-2 text-fg transition-colors group-hover:bg-accent group-hover:text-accent-fg hover:bg-accent-hover!"
       >
         <Code2 size={14} />
       </button>

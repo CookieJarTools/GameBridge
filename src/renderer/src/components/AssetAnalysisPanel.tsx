@@ -7,11 +7,11 @@ import { bytes, categoryColor } from '../lib/format'
 const SEVERITY: Record<AssetFinding['severity'], { icon: JSX.Element; box: string }> = {
   error: {
     icon: <XCircle size={12} className="text-danger" />,
-    box: 'border-danger/25 bg-danger/[0.05]'
+    box: 'border-danger/25 bg-danger/5'
   },
   warn: {
     icon: <AlertTriangle size={12} className="text-warn" />,
-    box: 'border-warn/25 bg-warn/[0.05]'
+    box: 'border-warn/25 bg-warn/5'
   },
   info: {
     icon: <Info size={12} className="text-fg-subtle" />,
