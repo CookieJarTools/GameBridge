@@ -64,7 +64,7 @@ Fab, the Unity Asset Store, Sketchfab, itch.io, Poly Haven, Kenney and OpenGameA
 
 ## Getting started
 
-1. Download **GameBridge-Setup.exe** from the [latest release](https://github.com/CookieJarTools/GameBridge/releases/latest) and run it. You can pick where it installs, and it adds Start menu and desktop shortcuts. No admin rights needed.
+1. Download **GameBridge-Setup-&lt;version&gt;.exe** from the [latest release](https://github.com/CookieJarTools/GameBridge/releases/latest) and run it. You can pick where it installs, and it adds Start menu and desktop shortcuts. No admin rights needed.
 2. Open **Settings** and press **Auto-detect engines** and **Auto-detect IDEs**.
 3. Add the folders that contain your projects as **scan roots**.
 4. Go back to **Library** and press **Scan**.
