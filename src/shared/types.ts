@@ -692,7 +692,9 @@ export interface UnrealAssetEntry {
   size: number
   route: TransferRoute
   /** File type it becomes in Unity. */
-  output?: 'wav' | 'png' | 'fbx'
+  output?: 'wav' | 'png' | 'fbx' | 'mat'
+  /** Materials a mesh uses, and textures/parents a material uses, as UnrealAssetEntry paths. */
+  refs: string[]
 }
 
 export interface UnrealScanResult {
@@ -710,6 +712,8 @@ export interface TransferOptions {
   humanoid: boolean
   /** Replace files already at the destination (their .meta, and so references, are kept). */
   overwrite: boolean
+  /** Rebuild Unreal materials as Unity materials and hook them up to the meshes. */
+  materials: boolean
 }
 
 export interface TransferRequest {
@@ -752,6 +756,8 @@ export interface TransferResult {
   written: number
   /** Of those, how many Unreal had to export. */
   exported: number
+  /** Materials queued for Unity to build. */
+  materials: number
   skipped: TransferIssue[]
   failed: TransferIssue[]
   /** Absolute path of the destination folder. */

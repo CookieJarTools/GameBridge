@@ -16,6 +16,8 @@ import type {
 import exportScript from './unrealexport.py?raw'
 import { extractEmbeddedSource, readUnrealAsset } from './uasset'
 import { writeImportMeta, type MetaKind } from './unitymeta'
+import { toUnitySpec, type UnrealMaterialDescription } from './materialspec'
+import { queueMaterialBuild, type UnityMaterialManifest } from './unitymaterials'
 
 /**
  * Moving assets from Unreal (or a Fab download) into a Unity project.
@@ -39,7 +41,8 @@ const KIND_OUTPUT: Partial<Record<UnrealAssetKind, UnrealAssetEntry['output']>> 
   texture: 'png',
   staticMesh: 'fbx',
   skeletalMesh: 'fbx',
-  animation: 'fbx'
+  animation: 'fbx',
+  material: 'mat'
 }
 
 const SCAN_CONCURRENCY = 16
@@ -110,7 +113,7 @@ export async function scanUnrealProject(
   const files = await walkContent(contentDir)
   let done = 0
   const assets = await mapLimit(files, SCAN_CONCURRENCY, async (file): Promise<UnrealAssetEntry> => {
-    const info = await readUnrealAsset(file).catch(() => ({ kind: 'other' as const, size: 0, source: null }))
+    const info = await readUnrealAsset(file).catch(() => ({ kind: 'other' as const, size: 0, source: null, refs: [] as string[] }))
     done++
     if (done % 100 === 0 || done === files.length) {
       emit('transfer:progress', { transferId: scanId, phase: 'scanning', done, total: files.length })
@@ -119,7 +122,8 @@ export async function scanUnrealProject(
     const name = path.split('/').pop() ?? path
     const output = KIND_OUTPUT[info.kind]
     const route = !output ? 'none' : info.source ? 'direct' : 'engine'
-    return { path, objectPath: `/Game/${path}.${name}`, kind: info.kind, size: info.size, route, output }
+    const refs = info.refs.filter((r) => r.startsWith('/Game/')).map((r) => r.slice('/Game/'.length))
+    return { path, objectPath: `/Game/${path}.${name}`, kind: info.kind, size: info.size, route, output, refs }
   })
 
   assets.sort((a, b) => a.path.localeCompare(b.path))
@@ -190,7 +194,6 @@ const NOT_TRANSFERABLE: Partial<Record<UnrealAssetKind, string>> = {
   soundCue: 'Sound cues are Unreal-only; the sounds they play transfer on their own',
   metaSound: 'MetaSounds are Unreal-only sound graphs',
   animationAsset: 'Blend spaces and montages are Unreal-only; their animations transfer on their own',
-  material: 'Unreal materials can\u2019t be converted; their textures transfer',
   skeleton: 'Comes across inside each character and animation FBX',
   physics: 'Physics assets are Unreal-only',
   blueprint: 'Blueprints are Unreal-only',
@@ -219,6 +222,7 @@ export async function runTransfer(
     ok: false,
     written: 0,
     exported: 0,
+    materials: 0,
     skipped: [],
     failed: [],
     destinationDir: '',
@@ -240,10 +244,13 @@ export async function runTransfer(
 
     const direct: UnrealAssetEntry[] = []
     const viaEngine: UnrealAssetEntry[] = []
+    const manifest: UnityMaterialManifest = { root: '', materials: [], meshes: [] }
     for (const asset of selected) {
       const target = join(destDir, `${asset.path}.${asset.output}`)
       if (asset.route === 'none') {
         result.skipped.push({ path: asset.path, reason: NOT_TRANSFERABLE[asset.kind] ?? 'Not transferable' })
+      } else if (asset.kind === 'material' && !req.options.materials) {
+        result.skipped.push({ path: asset.path, reason: 'Rebuilding materials is switched off' })
       } else if (!req.options.overwrite && (await fileExists(target))) {
         result.skipped.push({ path: asset.path, reason: 'Already in the Unity project' })
       } else if (asset.route === 'direct') {
@@ -281,8 +288,19 @@ export async function runTransfer(
           : 'Needs Unreal, and the project doesn\u2019t say which version'
         for (const a of viaEngine) result.failed.push({ path: a.path, reason })
       } else {
-        await exportWithUnreal(req, scan, viaEngine, destDir, state, transferId, result)
+        await exportWithUnreal(req, scan, viaEngine, destDir, state, transferId, result, manifest)
       }
+    }
+
+    // 3. Hand the materials to Unity, which builds them the next time it compiles.
+    if (req.options.materials && (manifest.materials.length || manifest.meshes.length) && !state.cancelled) {
+      manifest.root = relative(req.unityProjectPath, destDir).split(sep).join('/')
+      await queueMaterialBuild(req.unityProjectPath, manifest, transferId)
+      result.materials = manifest.materials.length
+      const n = manifest.materials.length
+      result.notes.push(
+        `Unity builds ${n === 1 ? 'the material' : `the ${n} materials`} and hooks ${n === 1 ? 'it' : 'them'} up to the models the next time it compiles: switch to Unity, or open the project.`
+      )
     }
 
     result.cancelled = state.cancelled
@@ -334,7 +352,8 @@ async function exportWithUnreal(
   destDir: string,
   state: ActiveTransfer,
   transferId: string,
-  result: TransferResult
+  result: TransferResult,
+  manifest: UnityMaterialManifest
 ): Promise<void> {
   const work = join(tmpdir(), `gamebridge-transfer-${transferId}`)
   const staging = join(work, 'out')
@@ -351,7 +370,7 @@ async function exportWithUnreal(
       const job: ExportJobAsset[] = remaining.map((a) => ({
         objectPath: a.objectPath,
         kind: a.kind,
-        out: join(staging, `${a.path}.${a.output}`)
+        out: stagedPath(staging, a)
       }))
       const jobPath = join(work, `job-${attempt}.json`)
       await fs.writeFile(jobPath, JSON.stringify({ assets: job }), 'utf-8')
@@ -402,7 +421,9 @@ async function exportWithUnreal(
             reported.add(event.objectPath)
             const asset = byObject.get(event.objectPath)
             if (!asset) continue
-            pending = pending.then(() => collectExport(asset, event.ok === true, event.error, staging, destDir, req, result))
+            pending = pending.then(() =>
+              collectExport(asset, event.ok === true, event.error, staging, destDir, req, result, manifest)
+            )
             exportedCount++
             progress(transferId, 'exporting', exportedCount, assets.length, asset.path)
           }
@@ -447,6 +468,18 @@ async function exportWithUnreal(
   }
 }
 
+/** Materials come back from Unreal as a description, not a file Unity can use directly. */
+const stagedPath = (staging: string, asset: UnrealAssetEntry): string =>
+  join(staging, asset.kind === 'material' ? `${asset.path}.gbmat.json` : `${asset.path}.${asset.output}`)
+
+async function readJson<T>(path: string): Promise<T | null> {
+  try {
+    return JSON.parse(await fs.readFile(path, 'utf-8')) as T
+  } catch {
+    return null
+  }
+}
+
 async function collectExport(
   asset: UnrealAssetEntry,
   ok: boolean,
@@ -454,13 +487,22 @@ async function collectExport(
   staging: string,
   destDir: string,
   req: TransferRequest,
-  result: TransferResult
+  result: TransferResult,
+  manifest: UnityMaterialManifest
 ): Promise<void> {
   if (!ok) {
     result.failed.push({ path: asset.path, reason: error ?? 'Unreal couldn\u2019t export it' })
     return
   }
-  const from = join(staging, `${asset.path}.${asset.output}`)
+  const from = stagedPath(staging, asset)
+
+  if (asset.kind === 'material') {
+    const desc = await readJson<UnrealMaterialDescription>(from)
+    if (desc) manifest.materials.push(toUnitySpec(asset.path, desc))
+    else result.failed.push({ path: asset.path, reason: 'Unreal didn\u2019t describe the material' })
+    return
+  }
+
   const target = join(destDir, `${asset.path}.${asset.output}`)
   try {
     await placeFile(target, (t) => fs.rename(from, t), metaKindFor(asset.kind), req.options.humanoid)
@@ -468,6 +510,20 @@ async function collectExport(
     result.exported++
   } catch (e) {
     result.failed.push({ path: asset.path, reason: (e as Error).message })
+    return
+  }
+
+  // Which material each slot uses, so Unity can point the model at the rebuilt ones.
+  const slots = req.options.materials ? await readJson<{ slot: string; material: string }[]>(`${from}.slots.json`) : null
+  const usable = (slots ?? []).filter((s) => s.material.startsWith('/Game/'))
+  if (usable.length) {
+    manifest.meshes.push({
+      path: asset.path,
+      slots: usable.map((s) => ({
+        name: s.material.split('/').pop() ?? s.material,
+        material: s.material.slice('/Game/'.length)
+      }))
+    })
   }
 }
 
@@ -573,6 +629,7 @@ export async function importFabArchive(req: FabImportRequest, transferId: string
     ok: false,
     written: 0,
     exported: 0,
+    materials: 0,
     skipped: [],
     failed: [],
     destinationDir: '',

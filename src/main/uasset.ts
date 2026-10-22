@@ -23,9 +23,14 @@ const UE5_OPTIONAL_RESOURCES = 1003
 const UE5_SOFT_OBJECT_PATH_LIST = 1008
 const UE5_PACKAGE_SAVED_HASH = 1016
 
+/** References worth following: meshes point at materials, materials at textures and parents. */
+const REFERENCE_CLASSES = new Set(['Texture2D', 'Material', 'MaterialInstanceConstant'])
+
 export interface PackageInfo {
   /** Every class an object inside this package is an instance of. */
   classes: string[]
+  /** Packages this one points at through a texture or material import, e.g. "/Game/Props/T_Crate_D". */
+  refs: string[]
   /** Engine version the package was saved with, for messages. */
   fileVersionUE4: number
   fileVersionUE5: number
@@ -120,21 +125,34 @@ export function readPackageInfo(buf: Buffer): PackageInfo | null {
       return names[index] ?? ''
     }
 
-    // An import whose class is "Class" is the class of an object in this package;
-    // imports of any other class are references to other assets.
-    const classes = new Set<string>()
+    const imports: { className: string; outer: number; objectName: string }[] = []
     r.pos = importOffset
     for (let i = 0; i < importCount; i++) {
       name() // ClassPackage
       const className = name()
-      r.int32() // OuterIndex
+      const outer = r.int32()
       const objectName = name()
       if (ue4 >= UE4_NON_OUTER_PACKAGE_IMPORT && !(flags & PKG_FILTER_EDITOR_ONLY)) name()
       if (ue5 >= UE5_OPTIONAL_RESOURCES) r.int32()
-      if (className === 'Class') classes.add(objectName)
+      imports.push({ className, outer, objectName })
     }
 
-    return { classes: [...classes], fileVersionUE4: ue4, fileVersionUE5: ue5 }
+    // An import whose class is "Class" is the class of an object in this package;
+    // imports of any other class are references to other assets, whose outer
+    // import is the package they live in.
+    const classes = new Set<string>()
+    const refs = new Set<string>()
+    for (const imp of imports) {
+      if (imp.className === 'Class') {
+        classes.add(imp.objectName)
+        continue
+      }
+      if (!REFERENCE_CLASSES.has(imp.className) || imp.outer >= 0) continue
+      const pkg = imports[-imp.outer - 1]
+      if (pkg?.className === 'Package') refs.add(pkg.objectName)
+    }
+
+    return { classes: [...classes], refs: [...refs], fileVersionUE4: ue4, fileVersionUE5: ue5 }
   } catch {
     return null
   }
@@ -206,6 +224,7 @@ export interface UnrealAssetInfo {
   kind: UnrealAssetKind
   size: number
   source: EmbeddedSource | null
+  refs: string[]
 }
 
 /**
@@ -226,7 +245,7 @@ export async function readUnrealAsset(path: string): Promise<UnrealAssetInfo> {
     const kind = info ? kindFromClasses(info.classes) : 'other'
     const mayCarrySource = kind === 'sound' || kind === 'texture'
     if (mayCarrySource && buf.length < size) buf = await fs.readFile(path)
-    return { kind, size, source: mayCarrySource ? findEmbeddedSource(buf, kind) : null }
+    return { kind, size, source: mayCarrySource ? findEmbeddedSource(buf, kind) : null, refs: info?.refs ?? [] }
   } finally {
     await handle.close()
   }

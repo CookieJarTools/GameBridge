@@ -13,6 +13,7 @@ import {
   Minus,
   Music,
   Package,
+  Palette,
   PersonStanding,
   Search,
   X
@@ -24,6 +25,7 @@ import type {
   UnrealAssetKind,
   UnrealScanResult
 } from '@shared/types'
+import { withMaterialDependencies } from '@shared/transferdeps'
 import { useStore } from '../store'
 import { bytes } from '../lib/format'
 
@@ -35,7 +37,8 @@ const KIND_GROUPS: { id: string; label: string; kinds: UnrealAssetKind[]; icon: 
   { id: 'textures', label: 'Textures', kinds: ['texture'], icon: Image },
   { id: 'meshes', label: 'Static meshes', kinds: ['staticMesh'], icon: Box },
   { id: 'characters', label: 'Characters', kinds: ['skeletalMesh'], icon: PersonStanding },
-  { id: 'animations', label: 'Animations', kinds: ['animation'], icon: Clapperboard }
+  { id: 'animations', label: 'Animations', kinds: ['animation'], icon: Clapperboard },
+  { id: 'materials', label: 'Materials', kinds: ['material'], icon: Palette }
 ]
 
 /** [one, many] */
@@ -43,7 +46,6 @@ const STAYS_BEHIND: Partial<Record<UnrealAssetKind, [string, string]>> = {
   soundCue: ['sound cue', 'sound cues'],
   metaSound: ['MetaSound', 'MetaSounds'],
   animationAsset: ['blend space or montage', 'blend spaces and montages'],
-  material: ['material', 'materials'],
   skeleton: ['skeleton', 'skeletons'],
   physics: ['physics asset', 'physics assets'],
   blueprint: ['Blueprint', 'Blueprints'],
@@ -120,6 +122,7 @@ export function TransferView(): JSX.Element {
   const [destination, setDestination] = useState('')
   const [humanoid, setHumanoid] = useState(true)
   const [overwrite, setOverwrite] = useState(false)
+  const [materials, setMaterials] = useState(true)
 
   const [groups, setGroups] = useState<Set<string>>(() => new Set(KIND_GROUPS.map((g) => g.id)))
   const [filter, setFilter] = useState('')
@@ -207,7 +210,15 @@ export function TransferView(): JSX.Element {
   )
 
   const chosen = useMemo(() => transferable.filter((a) => selected.has(a.path)), [transferable, selected])
-  const needEngine = chosen.filter((a) => a.route === 'engine').length
+
+  // With materials on, a model brings its materials and their textures along.
+  const toSend = useMemo(() => {
+    const all = scan?.assets ?? []
+    const paths = materials ? withMaterialDependencies(all, chosen.map((a) => a.path)) : new Set(chosen.map((a) => a.path))
+    return all.filter((a) => paths.has(a.path) && a.route !== 'none' && (materials || a.kind !== 'material'))
+  }, [scan, chosen, materials])
+  const added = toSend.length - chosen.length
+  const needEngine = toSend.filter((a) => a.route === 'engine').length
 
   const toggleAssets = (list: UnrealAssetEntry[], on: boolean): void => {
     setSelected((prev) => {
@@ -232,7 +243,7 @@ export function TransferView(): JSX.Element {
     if (!unity) return
     const transferId = `t-${Date.now()}`
     useRun.getState().set({ runningId: transferId, progress: null, result: null })
-    const options = { humanoid, overwrite }
+    const options = { humanoid, overwrite, materials }
     try {
       const result =
         mode === 'unreal' && scan
@@ -241,7 +252,7 @@ export function TransferView(): JSX.Element {
                 uprojectPath: scan.uprojectPath,
                 unityProjectPath: unity.path,
                 destination,
-                paths: chosen.map((a) => a.path),
+                paths: toSend.map((a) => a.path),
                 options
               },
               transferId
@@ -387,6 +398,15 @@ export function TransferView(): JSX.Element {
                 <span className="block text-xs text-fg-faint">So animations retarget onto any humanoid</span>
               </span>
             </label>
+            {mode === 'unreal' && (
+              <label className="flex cursor-pointer items-start gap-2 text-sm text-fg-muted">
+                <Checkbox state={materials ? 'on' : 'off'} onChange={() => setMaterials(!materials)} />
+                <span>
+                  Rebuild materials
+                  <span className="block text-xs text-fg-faint">Models bring their materials and textures, set up for the project&apos;s render pipeline</span>
+                </span>
+              </label>
+            )}
             <label className="flex cursor-pointer items-start gap-2 text-sm text-fg-muted">
               <Checkbox state={overwrite ? 'on' : 'off'} onChange={() => setOverwrite(!overwrite)} />
               <span>
@@ -413,7 +433,7 @@ export function TransferView(): JSX.Element {
               <p className="mt-1 max-w-md text-base text-fg-muted">
                 Pick an Unreal project on the left. Sounds and most textures are copied straight out of
                 it. Meshes, characters and animations are exported by Unreal, which runs in the
-                background.
+                background, and their materials are rebuilt for the Unity project.
               </p>
             </Centered>
           ) : (
@@ -513,6 +533,7 @@ export function TransferView(): JSX.Element {
         <Footer
           mode={mode}
           chosen={chosen.length}
+          added={added}
           needEngine={needEngine}
           engineVersion={scan?.engineVersion}
           unityName={unity?.name}
@@ -644,6 +665,7 @@ const PHASE_TEXT: Record<string, string> = {
 function Footer({
   mode,
   chosen,
+  added,
   needEngine,
   engineVersion,
   unityName,
@@ -653,6 +675,7 @@ function Footer({
 }: {
   mode: Mode
   chosen: number
+  added: number
   needEngine: number
   engineVersion?: string
   unityName?: string
@@ -709,6 +732,7 @@ function Footer({
               ? 'Nothing new to add'
               : `${count(result.written)} ${result.written === 1 ? 'file' : 'files'} added`}
             {result.exported ? ` (${count(result.exported)} exported by Unreal)` : ''}
+            {result.materials ? `, ${count(result.materials)} ${result.materials === 1 ? 'material' : 'materials'} to build` : ''}
           </span>
           {result.failed.length > 0 && <span className="text-warn">{count(result.failed.length)} failed</span>}
           {result.skipped.length > 0 && <span className="text-fg-subtle">{count(result.skipped.length)} skipped</span>}
@@ -760,7 +784,7 @@ function Footer({
     mode === 'unreal'
       ? chosen === 0
         ? 'Pick what to bring across'
-        : `${count(chosen)} selected${needEngine ? ` · ${count(needEngine)} exported by Unreal ${engineVersion ?? ''}, which takes about a minute to start` : ''}`
+        : `${count(chosen)} selected${added > 0 ? ` + ${count(added)} materials and textures` : ''}${needEngine ? ` · ${count(needEngine)} via Unreal ${engineVersion ?? ''} (about a minute to start)` : ''}`
       : 'Unpacks into the Unity project'
 
   return (

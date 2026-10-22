@@ -65,8 +65,9 @@ The Transfer view brings assets from an Unreal project into a Unity project. Poi
 - **Sounds** come across as WAV files in seconds, with no Unreal needed. Unreal keeps the original WAV inside every sound asset, and GameBridge copies it straight out.
 - **Meshes, characters and animations** are exported as FBX by Unreal, which GameBridge runs in the background with no editor window. Characters and their animations import into Unity as Humanoid, so animations retarget onto any humanoid.
 - **Textures** come across as PNG, straight out of the asset when it carries one and through Unreal when it doesn't. Normal maps and mask textures are set up correctly from their names.
+- **Materials** are rebuilt as Unity materials for whichever render pipeline the project uses (URP, HDRP or built-in) and hooked up to the models. Tick a model and its materials and textures come along with it.
 
-Sound cues, materials, Blueprints and other Unreal-only assets stay behind, and the screen says so. The sounds, textures and animations they use still transfer.
+Sound cues, Blueprints and other Unreal-only assets stay behind, and the screen says so. The sounds, textures and animations they use still transfer.
 
 It also takes **Fab downloads**. Many listings offer FBX, GLB or Unity-format files as well; drop the .zip or .unitypackage on the window and it's unpacked into the Unity project. A .unitypackage keeps its original GUIDs, so prefabs and materials still find their textures.
 
@@ -202,6 +203,7 @@ GameBridge reads each `.uasset` header itself (the package summary, name table a
 | Static mesh | `.fbx` | Exported by Unreal |
 | Skeletal mesh | `.fbx` | Exported by Unreal, imported into Unity as Humanoid |
 | Animation sequence | `.fbx` | Exported by Unreal, imported into Unity as a Humanoid clip |
+| Material | `.mat` | Described by Unreal, rebuilt by Unity (see below) |
 
 Unreal is run as `UnrealEditor-Cmd.exe <project> -run=pythonscript -script=<export script>`, with the Python plugin switched on for that run only, so the `.uproject` isn't modified. It needs the engine version the project was made with to be installed; GameBridge finds engines through the Epic launcher's install list, so engines in custom folders are found too. If Unreal crashes on an asset, that asset is reported as failed and Unreal is started again for the rest.
 
@@ -213,6 +215,30 @@ Import settings are written as `.meta` files before each asset lands, so Unity i
 - Textures ending in `_N`, `_BN` or `_Normal` import as normal maps, and packed masks (`_ORM`, `_ARM`, `_MSK` and similar) import as linear data.
 
 A `.meta` that already exists is never changed, so replacing a file keeps every reference to it working.
+
+</details>
+
+<details>
+<summary><b>Rebuilding materials</b></summary>
+
+<br />
+
+An Unreal material is a node graph, and there's no general way to turn one into a Unity shader. What carries across is what a Lit material needs: which texture is the colour, which is the normal map, where metallic, roughness and ambient occlusion live, a tint, and whether the material is opaque, masked or translucent.
+
+**Finding the parts.** Unreal is asked for each material's texture parameters, values, blend mode and two-sidedness. Parameter names are whatever the pack's author chose ("Base Texture", "BNormal", "MRA"), so GameBridge reads the role from the parameter name first and the texture's suffix (`_D`, `_N`, `_ORM`) second. Packed maps come in several layouts, so the channel order is read from the letters: `ORM` is AO, roughness and metallic in R, G and B, while `MRA` is metallic, roughness and AO.
+
+**Which assets come along.** Without starting Unreal, GameBridge reads which materials each model uses and which textures each material uses from the package headers. A material instance only lists the textures it overrides, so its parent materials are followed for the rest.
+
+**Building them.** GameBridge writes a manifest and a small editor script into `Assets/GameBridge/Editor/Materials`. The script runs the next time Unity compiles, whether the editor was already open or opens later. It:
+
+- creates a material per Unreal material, next to where the Unreal one was, using URP Lit, HDRP Lit or Standard as the project calls for,
+- repacks metallic, roughness and AO into the one mask texture Unity reads (metallic in R, AO in G, smoothness in A),
+- points each model's material slots at the new materials,
+- then deletes itself, along with any folders it leaves empty.
+
+It uses Unity's own material APIs rather than writing `.mat` files, because a material only uses a texture once its shader keywords are set, and Unity sets those properly.
+
+This was checked by transferring the UE 5.8 mannequins into fresh built-in, URP and HDRP projects and rendering the built-in and URP results. Detail that only exists in the Unreal graph, such as decals, procedural masks or panning, doesn't come across.
 
 </details>
 
@@ -304,6 +330,8 @@ src/
     uasset.ts      reading Unreal package headers without the engine
     unrealexport.py  the export script Unreal runs in the background
     unitymeta.ts   Unity import settings written ahead of each asset
+    materialspec.ts  working out what each texture in an Unreal material is for
+    unitymaterials/  the editor script that rebuilds materials inside Unity
     run.ts         game output and editor log tailing
     store.ts       saving app data
   preload/       the bridge between the main process and the UI
