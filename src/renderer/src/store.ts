@@ -26,7 +26,7 @@ import type {
   Settings
 } from '@shared/types'
 
-export type View = 'library' | 'stores' | 'instances' | 'data' | 'settings'
+export type View = 'library' | 'stores' | 'instances' | 'data' | 'transfer' | 'settings'
 
 /** Runs and builds share one list, so selection has to say which kind it is. */
 export interface InstanceRef {

@@ -61,7 +61,9 @@ export async function detectEngines(existingHubPath?: string): Promise<EngineCon
   const unityHubPath = await findUnityHub(existingHubPath)
   const unityEditors = unityHubPath ? await listInstalledEditors(unityHubPath) : []
 
-  const unrealInstalls: UnrealInstall[] = []
+  // The Epic launcher's own install list covers engines in custom folders
+  // (e.g. D:\Unreal\UE_5.8); the Program Files scan below is the fallback.
+  const unrealInstalls: UnrealInstall[] = await readEpicLauncherInstalls()
   for (const epicRoot of [join(PF, 'Epic Games'), join(PFX86, 'Epic Games')]) {
     if (!(await exists(epicRoot))) continue
     let entries: string[] = []
@@ -73,6 +75,7 @@ export async function detectEngines(existingHubPath?: string): Promise<EngineCon
     for (const entry of entries) {
       if (!entry.startsWith('UE_')) continue
       const editorPath = join(epicRoot, entry, 'Engine', 'Binaries', 'Win64', 'UnrealEditor.exe')
+      if (unrealInstalls.some((u) => u.editorPath.toLowerCase() === editorPath.toLowerCase())) continue
       if (await exists(editorPath)) {
         unrealInstalls.push({ version: entry.replace('UE_', ''), editorPath })
       }
@@ -80,6 +83,26 @@ export async function detectEngines(existingHubPath?: string): Promise<EngineCon
   }
 
   return { unityEditorsRoot, unityHubPath, unityEditors, unrealInstalls }
+}
+
+/** Engines the Epic launcher installed, wherever they live. */
+export async function readEpicLauncherInstalls(): Promise<UnrealInstall[]> {
+  const programData = process.env['ProgramData'] ?? 'C:\\ProgramData'
+  const file = join(programData, 'Epic', 'UnrealEngineLauncher', 'LauncherInstalled.dat')
+  let list: { InstallLocation?: string; AppName?: string }[] = []
+  try {
+    list = JSON.parse(await fs.readFile(file, 'utf-8')).InstallationList ?? []
+  } catch {
+    return []
+  }
+  const installs: UnrealInstall[] = []
+  for (const item of list) {
+    // Plugins share the engine's folder; only the engine entry itself is UE_<version>.
+    if (!item.AppName?.startsWith('UE_') || !item.InstallLocation) continue
+    const editorPath = join(item.InstallLocation, 'Engine', 'Binaries', 'Win64', 'UnrealEditor.exe')
+    if (await exists(editorPath)) installs.push({ version: item.AppName.slice(3), editorPath })
+  }
+  return installs
 }
 
 /** Best-effort detection of common IDEs on Windows. */

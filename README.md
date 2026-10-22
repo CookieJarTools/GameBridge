@@ -58,6 +58,18 @@ Running games and editors stream their output into the Instances view. Logs are 
 
 The Data view opens the JSON files your game reads as a form instead of raw text. True/false values get a switch, numbers get a stepper, and nested objects open like folders. Field names are made readable, with the real key shown underneath. Structural changes like adding or renaming fields are behind an explicit toggle, and every save keeps a backup.
 
+### Unreal and Fab assets into Unity
+
+The Transfer view brings assets from an Unreal project into a Unity project. Point it at the .uproject your Fab packs are added to, tick the folders you want, and pick where they go in Unity.
+
+- **Sounds** come across as WAV files in seconds, with no Unreal needed. Unreal keeps the original WAV inside every sound asset, and GameBridge copies it straight out.
+- **Meshes, characters and animations** are exported as FBX by Unreal, which GameBridge runs in the background with no editor window. Characters and their animations import into Unity as Humanoid, so animations retarget onto any humanoid.
+- **Textures** come across as PNG, straight out of the asset when it carries one and through Unreal when it doesn't. Normal maps and mask textures are set up correctly from their names.
+
+Sound cues, materials, Blueprints and other Unreal-only assets stay behind, and the screen says so. The sounds, textures and animations they use still transfer.
+
+It also takes **Fab downloads**. Many listings offer FBX, GLB or Unity-format files as well; drop the .zip or .unitypackage on the window and it's unpacked into the Unity project. A .unitypackage keeps its original GUIDs, so prefabs and materials still find their textures.
+
 ### Asset stores
 
 Fab, the Unity Asset Store, Sketchfab, itch.io, Poly Haven, Kenney and OpenGameArt are built in as tabs, and they stay logged in between sessions.
@@ -177,6 +189,34 @@ Tools that ship as `.cmd` or `.bat` files are started through `cmd.exe`, because
 </details>
 
 <details>
+<summary><b>Transferring from Unreal</b></summary>
+
+<br />
+
+GameBridge reads each `.uasset` header itself (the package summary, name table and import table) to tell what an asset is, so listing a project takes well under a second and needs no engine. It has been checked against packages saved by UE 5.1 through 5.8. Packages from UE 4 should read too but haven't been tested.
+
+| Asset | Becomes | How |
+| --- | --- | --- |
+| Sound wave | `.wav` | Copied out of the `.uasset`, which keeps the original WAV byte for byte. Falls back to Unreal if it doesn't carry one |
+| Texture | `.png` | Copied out when the asset carries a PNG, otherwise exported by Unreal |
+| Static mesh | `.fbx` | Exported by Unreal |
+| Skeletal mesh | `.fbx` | Exported by Unreal, imported into Unity as Humanoid |
+| Animation sequence | `.fbx` | Exported by Unreal, imported into Unity as a Humanoid clip |
+
+Unreal is run as `UnrealEditor-Cmd.exe <project> -run=pythonscript -script=<export script>`, with the Python plugin switched on for that run only, so the `.uproject` isn't modified. It needs the engine version the project was made with to be installed; GameBridge finds engines through the Epic launcher's install list, so engines in custom folders are found too. If Unreal crashes on an asset, that asset is reported as failed and Unreal is started again for the rest.
+
+Import settings are written as `.meta` files before each asset lands, so Unity imports it correctly the first time. These were checked by importing the UE 5.8 mannequin into Unity 6000.4:
+
+- Scale needs no setting: Unity reads Unreal's centimetres from the FBX, and Manny comes in 1.81 m tall.
+- Axis conversion is left off on purpose. Baking it turns Unreal characters round to face away from the camera.
+- Each animation gets its own Humanoid avatar. Copying the character's avatar doesn't work, because Unreal names each FBX's root after the file.
+- Textures ending in `_N`, `_BN` or `_Normal` import as normal maps, and packed masks (`_ORM`, `_ARM`, `_MSK` and similar) import as linear data.
+
+A `.meta` that already exists is never changed, so replacing a file keeps every reference to it working.
+
+</details>
+
+<details>
 <summary><b>Cleanup rules</b></summary>
 
 <br />
@@ -260,6 +300,10 @@ src/
     cleanup.ts     cleanup suggestions and quarantine
     assetscan.ts   static asset analysis
     jsonfiles.ts   listing, reading and safely writing JSON
+    transfer.ts    Unreal and Fab assets into Unity
+    uasset.ts      reading Unreal package headers without the engine
+    unrealexport.py  the export script Unreal runs in the background
+    unitymeta.ts   Unity import settings written ahead of each asset
     run.ts         game output and editor log tailing
     store.ts       saving app data
   preload/       the bridge between the main process and the UI

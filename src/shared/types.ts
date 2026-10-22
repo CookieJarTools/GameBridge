@@ -116,6 +116,8 @@ export interface EngineConfig {
 
 export interface Settings {
   scanRoots: string[]
+  /** Unreal projects picked as a transfer source, most recent first. */
+  recentUnrealProjects?: string[]
   /** Predefined tag vocabulary, selectable per project. */
   tags: string[]
   /** Fallback IDE used when an engine has no specific assignment. */
@@ -655,4 +657,106 @@ export interface PublishDoneEvent {
   ok: boolean
   code?: number | null
   message: string
+}
+
+// --- Transfer: Unreal / Fab assets into Unity ---
+
+export type UnrealAssetKind =
+  | 'sound'
+  | 'soundCue'
+  | 'metaSound'
+  | 'staticMesh'
+  | 'skeletalMesh'
+  | 'animation'
+  | 'animationAsset'
+  | 'texture'
+  | 'material'
+  | 'skeleton'
+  | 'physics'
+  | 'blueprint'
+  | 'level'
+  | 'other'
+
+/**
+ * How an asset gets to Unity: its original file copied straight out of the
+ * package, exported by Unreal running in the background, or not at all.
+ */
+export type TransferRoute = 'direct' | 'engine' | 'none'
+
+export interface UnrealAssetEntry {
+  /** Path under Content with forward slashes and no extension, e.g. "Packs/Wood/Wood_Run_1". */
+  path: string
+  /** Unreal object path, e.g. "/Game/Packs/Wood/Wood_Run_1.Wood_Run_1". */
+  objectPath: string
+  kind: UnrealAssetKind
+  size: number
+  route: TransferRoute
+  /** File type it becomes in Unity. */
+  output?: 'wav' | 'png' | 'fbx'
+}
+
+export interface UnrealScanResult {
+  uprojectPath: string
+  projectName: string
+  /** EngineAssociation from the .uproject, e.g. "5.8". */
+  engineVersion?: string
+  /** UnrealEditor-Cmd.exe for that version, when installed. */
+  engineCmdPath?: string
+  assets: UnrealAssetEntry[]
+}
+
+export interface TransferOptions {
+  /** Import skeletal meshes and animations as Humanoid. */
+  humanoid: boolean
+  /** Replace files already at the destination (their .meta, and so references, are kept). */
+  overwrite: boolean
+}
+
+export interface TransferRequest {
+  uprojectPath: string
+  unityProjectPath: string
+  /** Folder relative to the Unity project, e.g. "Assets/From Unreal/MyProject". */
+  destination: string
+  /** UnrealAssetEntry.path values to transfer. */
+  paths: string[]
+  options: TransferOptions
+}
+
+export interface FabImportRequest {
+  /** A .zip or .unitypackage downloaded from fab.com. */
+  archivePath: string
+  unityProjectPath: string
+  destination: string
+  options: TransferOptions
+}
+
+export type TransferPhase = 'scanning' | 'copying' | 'starting-unreal' | 'exporting' | 'extracting' | 'finishing'
+
+export interface TransferProgressEvent {
+  transferId: string
+  phase: TransferPhase
+  done: number
+  total: number
+  message?: string
+}
+
+export interface TransferIssue {
+  path: string
+  reason: string
+}
+
+export interface TransferResult {
+  transferId: string
+  ok: boolean
+  /** Files written into the Unity project. */
+  written: number
+  /** Of those, how many Unreal had to export. */
+  exported: number
+  skipped: TransferIssue[]
+  failed: TransferIssue[]
+  /** Absolute path of the destination folder. */
+  destinationDir: string
+  cancelled?: boolean
+  /** Notes worth showing, e.g. a missing glTF package for .glb files. */
+  notes: string[]
 }

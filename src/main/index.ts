@@ -33,10 +33,14 @@ import type {
   ScanResult,
   Settings,
   UnityEditor,
-  UnityRelease
+  UnityRelease,
+  FabImportRequest,
+  TransferRequest,
+  TransferResult,
+  UnrealScanResult
 } from '@shared/types'
 import { loadData, mutate, newId } from './store'
-import { detectEngines, detectIdes } from './detect'
+import { detectEngines, detectIdes, readEpicLauncherInstalls } from './detect'
 import { scanProjects } from './scanner'
 import { launchProject } from './launch'
 import { gitStatus, runGitAction } from './git'
@@ -59,6 +63,14 @@ import { findBuildProfiles } from './buildprofiles'
 import { listJsonFiles, readJsonFile, writeJsonFile } from './jsonfiles'
 import { readProjectVersion, nextVersion } from './version'
 import { cancelAllUploads, cancelUpload, setPublishEmitter, startUpload } from './publish'
+import {
+  cancelAllTransfers,
+  cancelTransfer,
+  importFabArchive,
+  runTransfer,
+  scanUnrealProject,
+  setTransferEmitter
+} from './transfer'
 import { outputFolderOf as buildOutputFolder } from './build'
 import {
   computeCleanup,
@@ -118,6 +130,9 @@ function createWindow(): void {
     win.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
+
+/** Last scan per .uproject, so a transfer can work from what the user saw. */
+const unrealScans = new Map<string, UnrealScanResult>()
 
 function registerIpc(): void {
   ipcMain.handle('data:get', async (): Promise<AppData> => loadData())
@@ -414,6 +429,61 @@ function registerIpc(): void {
     return !err
   })
 
+  // --- Transfer (Unreal / Fab -> Unity) ---
+  ipcMain.handle('transfer:pick-uproject', async (): Promise<string | null> => {
+    const res = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [{ name: 'Unreal project', extensions: ['uproject'] }]
+    })
+    return res.canceled ? null : res.filePaths[0] ?? null
+  })
+
+  ipcMain.handle('transfer:pick-archive', async (): Promise<string | null> => {
+    const res = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [{ name: 'Fab download', extensions: ['zip', 'unitypackage'] }]
+    })
+    return res.canceled ? null : res.filePaths[0] ?? null
+  })
+
+  ipcMain.handle(
+    'transfer:scan',
+    async (_e, uprojectPath: string, scanId: string): Promise<UnrealScanResult> => {
+      const data = await loadData()
+      const installs = [...data.settings.engineConfig.unrealInstalls]
+      for (const found of await readEpicLauncherInstalls()) {
+        if (!installs.some((i) => i.editorPath.toLowerCase() === found.editorPath.toLowerCase())) installs.push(found)
+      }
+      const scan = await scanUnrealProject(uprojectPath, installs, scanId)
+      unrealScans.set(uprojectPath.toLowerCase(), scan)
+      await mutate((d) => {
+        const recent = (d.settings.recentUnrealProjects ?? []).filter(
+          (p) => p.toLowerCase() !== uprojectPath.toLowerCase()
+        )
+        d.settings.recentUnrealProjects = [uprojectPath, ...recent].slice(0, 8)
+      })
+      return scan
+    }
+  )
+
+  ipcMain.handle(
+    'transfer:start',
+    async (_e, req: TransferRequest, transferId: string): Promise<TransferResult> => {
+      const scan = unrealScans.get(req.uprojectPath.toLowerCase())
+      if (!scan) throw new Error('Scan the Unreal project first.')
+      return runTransfer(req, scan, transferId)
+    }
+  )
+
+  ipcMain.handle(
+    'transfer:fab',
+    async (_e, req: FabImportRequest, transferId: string): Promise<TransferResult> => importFabArchive(req, transferId)
+  )
+
+  ipcMain.handle('transfer:cancel', async (_e, transferId: string): Promise<void> => cancelTransfer(transferId))
+
+  ipcMain.handle('transfer:reveal', async (_e, dir: string): Promise<boolean> => !(await shell.openPath(dir)))
+
   // --- Asset analysis ---
   ipcMain.handle('assets:scan', async (_e, projectId: string): Promise<AssetScanResult | null> => {
     const data = await loadData()
@@ -616,6 +686,7 @@ app.whenReady().then(() => {
   setRunEmitter(send)
   setAssetEmitter(send)
   setPublishEmitter(send)
+  setTransferEmitter(send)
   // Reopening after a build reuses the normal launch path (log capture and all).
   setEditorReopener(async (projectId) => {
     const data = await loadData()
@@ -636,6 +707,7 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   cancelAllUploads()
+  cancelAllTransfers()
   stopAllBuilds()
   stopAllRuns()
 })

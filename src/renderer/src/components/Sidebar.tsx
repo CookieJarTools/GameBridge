@@ -3,6 +3,7 @@ import {
   Store,
   Activity,
   FileJson,
+  ArrowRightLeft,
   Settings as SettingsIcon,
   Gamepad2
 } from 'lucide-react'
@@ -13,6 +14,7 @@ const NAV: { id: View; label: string; icon: typeof LayoutGrid }[] = [
   { id: 'stores', label: 'Asset Stores', icon: Store },
   { id: 'instances', label: 'Instances', icon: Activity },
   { id: 'data', label: 'Data', icon: FileJson },
+  { id: 'transfer', label: 'Transfer', icon: ArrowRightLeft },
   { id: 'settings', label: 'Settings', icon: SettingsIcon }
 ]
 

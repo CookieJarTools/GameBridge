@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from 'electron'
 import type {
   AppData,
   AssetScanProgress,
@@ -40,7 +40,12 @@ import type {
   CreateProjectRequest,
   CreateProjectResult,
   InstallLogEvent,
-  InstallDoneEvent
+  InstallDoneEvent,
+  FabImportRequest,
+  TransferProgressEvent,
+  TransferRequest,
+  TransferResult,
+  UnrealScanResult
 } from '@shared/types'
 
 const api = {
@@ -59,6 +64,25 @@ const api = {
   pickExecutable: (): Promise<string | null> => ipcRenderer.invoke('dialog:pick-exe'),
   addScanRoot: (): Promise<string | null> => ipcRenderer.invoke('dialog:add-scan-root'),
   openExternal: (url: string): Promise<void> => ipcRenderer.invoke('shell:open-external', url),
+
+  // Transfer (Unreal / Fab -> Unity)
+  transferPickUproject: (): Promise<string | null> => ipcRenderer.invoke('transfer:pick-uproject'),
+  transferPickArchive: (): Promise<string | null> => ipcRenderer.invoke('transfer:pick-archive'),
+  transferScan: (uprojectPath: string, scanId: string): Promise<UnrealScanResult> =>
+    ipcRenderer.invoke('transfer:scan', uprojectPath, scanId),
+  transferStart: (req: TransferRequest, transferId: string): Promise<TransferResult> =>
+    ipcRenderer.invoke('transfer:start', req, transferId),
+  transferFab: (req: FabImportRequest, transferId: string): Promise<TransferResult> =>
+    ipcRenderer.invoke('transfer:fab', req, transferId),
+  transferCancel: (transferId: string): Promise<void> => ipcRenderer.invoke('transfer:cancel', transferId),
+  transferReveal: (dir: string): Promise<boolean> => ipcRenderer.invoke('transfer:reveal', dir),
+  /** Real path of a file dropped onto the window (File.path no longer exists). */
+  pathForFile: (file: File): string => webUtils.getPathForFile(file),
+  onTransferProgress: (cb: (e: TransferProgressEvent) => void): (() => void) => {
+    const handler = (_e: IpcRendererEvent, payload: TransferProgressEvent): void => cb(payload)
+    ipcRenderer.on('transfer:progress', handler)
+    return () => ipcRenderer.removeListener('transfer:progress', handler)
+  },
 
   // Git
   gitStatus: (path: string): Promise<GitStatus> => ipcRenderer.invoke('git:status', path),

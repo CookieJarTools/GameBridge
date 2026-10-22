@@ -6,6 +6,7 @@ import { SettingsView } from './components/SettingsView'
 import { AssetStoreView } from './components/AssetStoreView'
 import { InstancesView } from './components/InstancesView'
 import { DataView } from './components/DataView'
+import { TransferView } from './components/TransferView'
 import { Toasts } from './components/Toasts'
 
 export default function App(): JSX.Element {
@@ -85,6 +86,8 @@ export default function App(): JSX.Element {
           <InstancesView />
         ) : view === 'data' ? (
           <DataView />
+        ) : view === 'transfer' ? (
+          <TransferView />
         ) : (
           <SettingsView />
         )}
