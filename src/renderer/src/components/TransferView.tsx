@@ -46,6 +46,7 @@ const STAYS_BEHIND: Partial<Record<UnrealAssetKind, [string, string]>> = {
   soundCue: ['sound cue', 'sound cues'],
   metaSound: ['MetaSound', 'MetaSounds'],
   animationAsset: ['blend space or montage', 'blend spaces and montages'],
+  materialFunction: ['material function', 'material functions'],
   skeleton: ['skeleton', 'skeletons'],
   physics: ['physics asset', 'physics assets'],
   blueprint: ['Blueprint', 'Blueprints'],
@@ -442,7 +443,12 @@ export function TransferView(): JSX.Element {
                 <span className="text-md font-medium tracking-tight text-fg">{scan.projectName}</span>
                 <span className="text-sm text-fg-faint tabular-nums">{count(scan.assets.length)} assets</span>
                 {scan.engineCmdPath ? (
-                  <span className="chip">Unreal {scan.engineVersion}</span>
+                  <span
+                    className="chip"
+                    title={scan.engineUsed ? `Made for Unreal ${scan.engineVersion}, which isn't installed. Exports read the assets with ${scan.engineUsed} and change nothing in the project.` : undefined}
+                  >
+                    Unreal {scan.engineUsed ? `${scan.engineUsed} (made for ${scan.engineVersion})` : scan.engineVersion}
+                  </span>
                 ) : (
                   <span className="chip border-warn/30 bg-warn/10 text-warn" title="Meshes, characters and animations need it">
                     Unreal {scan.engineVersion ?? ''} not installed
@@ -458,6 +464,8 @@ export function TransferView(): JSX.Element {
                   />
                 </div>
               </div>
+
+              <ProjectWarnings scan={scan} onOpen={openSource} />
 
               <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-line px-4 py-2">
                 {KIND_GROUPS.map((g) => {
@@ -542,6 +550,49 @@ export function TransferView(): JSX.Element {
           onStart={start}
         />
       </div>
+    </div>
+  )
+}
+
+/**
+ * Problems with the Unreal project itself that would make a transfer come out
+ * wrong. The common one is a downloaded pack unzipped into Content as a whole
+ * project, which breaks every reference inside it.
+ */
+function ProjectWarnings({
+  scan,
+  onOpen
+}: {
+  scan: UnrealScanResult
+  onOpen: (uproject: string) => void
+}): JSX.Element | null {
+  const nested = scan.nestedProjects[0]
+  if (nested) {
+    const parts = nested.split(/[\\/]/)
+    const name = parts.pop()?.replace(/\.uproject$/i, '') ?? 'it'
+    const folder = parts.slice(parts.lastIndexOf('Content') + 1).join('/')
+    return (
+      <div className="flex shrink-0 items-start gap-2 border-b border-warn/25 bg-warn/5 px-4 py-2.5 text-sm text-[#f6e6b4]">
+        <AlertTriangle size={14} className="mt-0.5 shrink-0 text-warn" />
+        <span className="min-w-0 flex-1 leading-relaxed">
+          <b className="font-medium">Content/{folder}</b> is a whole Unreal project copied inside this one, so its
+          assets can&apos;t find their own materials and textures from here. Transfer from it directly instead.
+        </span>
+        <button onClick={() => onOpen(nested)} className="btn-secondary h-6 shrink-0 px-2 text-sm">
+          Use {name}
+        </button>
+      </div>
+    )
+  }
+  if (scan.brokenRefs === 0) return null
+  return (
+    <div className="flex shrink-0 items-start gap-2 border-b border-warn/25 bg-warn/5 px-4 py-2.5 text-sm text-[#f6e6b4]">
+      <AlertTriangle size={14} className="mt-0.5 shrink-0 text-warn" />
+      <span className="leading-relaxed">
+        {count(scan.brokenRefs)} material and texture references in this project point at assets that aren&apos;t
+        there, so some models and materials will come across without them. This usually means a pack was moved
+        or copied into a different folder from the one it was made in.
+      </span>
     </div>
   )
 }

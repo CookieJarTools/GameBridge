@@ -11,9 +11,27 @@ namespace GameBridgeGenerated.Materials
 	/// </summary>
 	public static class GameBridgeTextureLoader
 	{
+		/// <summary>PNG first; Unreal falls back to the others for HDR and high bit-depth textures.</summary>
+		private static readonly string[] Extensions = { ".png", ".tga", ".exr", ".hdr" };
+
+		/// <summary>The file the texture was transferred as, or null if it never arrived.</summary>
 		public static string FilePath(string root, string texture)
 		{
-			return string.IsNullOrEmpty(texture) ? null : root + "/" + texture + ".png";
+			if (string.IsNullOrEmpty(texture))
+			{
+				return null;
+			}
+
+			foreach (var extension in Extensions)
+			{
+				var path = root + "/" + texture + extension;
+				if (File.Exists(path))
+				{
+					return path;
+				}
+			}
+
+			return null;
 		}
 
 		public static Texture2D Load(string root, string texture)

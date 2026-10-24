@@ -671,6 +671,7 @@ export type UnrealAssetKind =
   | 'animationAsset'
   | 'texture'
   | 'material'
+  | 'materialFunction'
   | 'skeleton'
   | 'physics'
   | 'blueprint'
@@ -702,8 +703,14 @@ export interface UnrealScanResult {
   projectName: string
   /** EngineAssociation from the .uproject, e.g. "5.8". */
   engineVersion?: string
-  /** UnrealEditor-Cmd.exe for that version, when installed. */
+  /** UnrealEditor-Cmd.exe used for exports: the project's own version, or the nearest newer one installed. */
   engineCmdPath?: string
+  /** The engine version that will actually run, when it differs from engineVersion. */
+  engineUsed?: string
+  /** Whole Unreal projects found inside Content, e.g. a downloaded pack unzipped in the wrong place. */
+  nestedProjects: string[]
+  /** Material and texture references that point at assets this project doesn't have. */
+  brokenRefs: number
   assets: UnrealAssetEntry[]
 }
 

@@ -87,17 +87,54 @@ async function readEngineAssociation(uprojectPath: string): Promise<string | und
 }
 
 /** UnrealEditor-Cmd.exe for the project's engine version, if that version is installed. */
-async function resolveUnrealCmd(version: string | undefined, installs: UnrealInstall[]): Promise<string | undefined> {
+const versionParts = (v: string): number[] => v.split('.').map((n) => parseInt(n, 10) || 0)
+
+/**
+ * The engine to export with: the project's own version if it's installed,
+ * otherwise the nearest newer one with the same major version. Fab packs are
+ * often made for an older release, and a newer editor reads their assets fine;
+ * the export only reads, so nothing in the project is upgraded on disk.
+ */
+async function resolveUnrealCmd(
+  version: string | undefined,
+  installs: UnrealInstall[]
+): Promise<{ cmd: string; version: string } | undefined> {
   if (!version) return undefined
-  const match = installs.find((i) => i.version === version) ?? installs.find((i) => i.version.startsWith(version))
-  if (!match) return undefined
-  const cmd = join(dirname(match.editorPath), 'UnrealEditor-Cmd.exe')
-  try {
-    await fs.access(cmd)
-    return cmd
-  } catch {
-    return undefined
+  const [major, minor] = versionParts(version)
+  const exact = installs.find((i) => i.version === version)
+  const newer = installs
+    .filter((i) => versionParts(i.version)[0] === major && versionParts(i.version)[1] >= minor)
+    .sort((a, b) => versionParts(a.version)[1] - versionParts(b.version)[1])
+  for (const install of exact ? [exact, ...newer] : newer) {
+    const cmd = join(dirname(install.editorPath), 'UnrealEditor-Cmd.exe')
+    try {
+      await fs.access(cmd)
+      return { cmd, version: install.version }
+    } catch {
+      // try the next one
+    }
   }
+  return undefined
+}
+
+/** .uproject files below Content: a whole project copied in where only its Content belonged. */
+async function findNestedProjects(contentDir: string): Promise<string[]> {
+  const found: string[] = []
+  const walk = async (dir: string, depth: number): Promise<void> => {
+    if (depth > 3) return
+    let entries: Dirent[]
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true })
+    } catch {
+      return
+    }
+    for (const e of entries) {
+      if (e.isFile() && e.name.toLowerCase().endsWith('.uproject')) found.push(join(dir, e.name))
+      else if (e.isDirectory()) await walk(join(dir, e.name), depth + 1)
+    }
+  }
+  await walk(contentDir, 0)
+  return found
 }
 
 export async function scanUnrealProject(
@@ -108,7 +145,7 @@ export async function scanUnrealProject(
   const projectDir = dirname(uprojectPath)
   const contentDir = join(projectDir, 'Content')
   const engineVersion = await readEngineAssociation(uprojectPath)
-  const engineCmdPath = await resolveUnrealCmd(engineVersion, installs)
+  const engine = await resolveUnrealCmd(engineVersion, installs)
 
   const files = await walkContent(contentDir)
   let done = 0
@@ -127,11 +164,16 @@ export async function scanUnrealProject(
   })
 
   assets.sort((a, b) => a.path.localeCompare(b.path))
+  const known = new Set(assets.map((a) => a.path))
+  const brokenRefs = assets.reduce((n, a) => n + a.refs.filter((r) => !known.has(r)).length, 0)
   return {
     uprojectPath,
     projectName: basename(uprojectPath, extname(uprojectPath)),
     engineVersion,
-    engineCmdPath,
+    engineCmdPath: engine?.cmd,
+    engineUsed: engine && engine.version !== engineVersion ? engine.version : undefined,
+    nestedProjects: await findNestedProjects(contentDir),
+    brokenRefs,
     assets
   }
 }
@@ -194,6 +236,7 @@ const NOT_TRANSFERABLE: Partial<Record<UnrealAssetKind, string>> = {
   soundCue: 'Sound cues are Unreal-only; the sounds they play transfer on their own',
   metaSound: 'MetaSounds are Unreal-only sound graphs',
   animationAsset: 'Blend spaces and montages are Unreal-only; their animations transfer on their own',
+  materialFunction: 'Material functions are pieces of Unreal material graphs; the materials that use them are rebuilt',
   skeleton: 'Comes across inside each character and animation FBX',
   physics: 'Physics assets are Unreal-only',
   blueprint: 'Blueprints are Unreal-only',
@@ -380,7 +423,7 @@ async function exportWithUnreal(
         'starting-unreal',
         exportedCount,
         assets.length,
-        attempt === 0 ? `Starting Unreal ${scan.engineVersion ?? ''}\u2026` : 'Unreal stopped; starting it again for the rest\u2026'
+        attempt === 0 ? `Starting Unreal ${scan.engineUsed ?? scan.engineVersion ?? ''}\u2026` :'Unreal stopped; starting it again for the rest\u2026'
       )
 
       const reported = new Set<string>()
@@ -410,7 +453,7 @@ async function exportWithUnreal(
             if (lastLines.length > 40) lastLines = lastLines.slice(-40)
             const at = line.indexOf(EVENT_PREFIX)
             if (at < 0) continue
-            let event: { event: string; objectPath?: string; ok?: boolean; error?: string | null }
+            let event: { event: string; objectPath?: string; ok?: boolean; error?: string | null; file?: string }
             try {
               event = JSON.parse(line.slice(at + EVENT_PREFIX.length))
             } catch {
@@ -422,7 +465,7 @@ async function exportWithUnreal(
             const asset = byObject.get(event.objectPath)
             if (!asset) continue
             pending = pending.then(() =>
-              collectExport(asset, event.ok === true, event.error, staging, destDir, req, result, manifest)
+              collectExport(asset, event.ok === true, event.error, event.file, staging, destDir, req, result, manifest)
             )
             exportedCount++
             progress(transferId, 'exporting', exportedCount, assets.length, asset.path)
@@ -468,6 +511,20 @@ async function exportWithUnreal(
   }
 }
 
+/**
+ * Unreal exports into the temp folder, which is usually on another drive from
+ * the Unity project, and a rename can't cross drives.
+ */
+async function moveFile(from: string, to: string): Promise<void> {
+  try {
+    await fs.rename(from, to)
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'EXDEV') throw e
+    await fs.copyFile(from, to)
+    await fs.rm(from, { force: true })
+  }
+}
+
 /** Materials come back from Unreal as a description, not a file Unity can use directly. */
 const stagedPath = (staging: string, asset: UnrealAssetEntry): string =>
   join(staging, asset.kind === 'material' ? `${asset.path}.gbmat.json` : `${asset.path}.${asset.output}`)
@@ -484,6 +541,7 @@ async function collectExport(
   asset: UnrealAssetEntry,
   ok: boolean,
   error: string | null | undefined,
+  writtenFile: string | undefined,
   staging: string,
   destDir: string,
   req: TransferRequest,
@@ -494,7 +552,7 @@ async function collectExport(
     result.failed.push({ path: asset.path, reason: error ?? 'Unreal couldn\u2019t export it' })
     return
   }
-  const from = stagedPath(staging, asset)
+  const from = writtenFile || stagedPath(staging, asset)
 
   if (asset.kind === 'material') {
     const desc = await readJson<UnrealMaterialDescription>(from)
@@ -503,9 +561,9 @@ async function collectExport(
     return
   }
 
-  const target = join(destDir, `${asset.path}.${asset.output}`)
+  const target = join(destDir, `${asset.path}${extname(from) || `.${asset.output}`}`)
   try {
-    await placeFile(target, (t) => fs.rename(from, t), metaKindFor(asset.kind), req.options.humanoid)
+    await placeFile(target, (t) => moveFile(from, t), metaKindFor(asset.kind), req.options.humanoid)
     result.written++
     result.exported++
   } catch (e) {

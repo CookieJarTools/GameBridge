@@ -175,7 +175,11 @@ const KIND_BY_CLASS: [string[], UnrealAssetKind][] = [
   [['Skeleton'], 'skeleton'],
   [['PhysicsAsset'], 'physics'],
   [['Texture2D', 'TextureCube', 'VirtualTexture2D'], 'texture'],
-  [['Material', 'MaterialInstanceConstant', 'MaterialFunction'], 'material']
+  [['Material', 'MaterialInstanceConstant'], 'material'],
+  [
+    ['MaterialFunction', 'MaterialFunctionMaterialLayer', 'MaterialFunctionMaterialLayerBlend', 'MaterialParameterCollection'],
+    'materialFunction'
+  ]
 ]
 
 export function kindFromClasses(classes: string[]): UnrealAssetKind {

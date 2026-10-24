@@ -42,7 +42,7 @@ function textureMeta(fileName: string): string {
 function metaBody(filePath: string, kind: MetaKind, humanoid: boolean): string | null {
   const ext = extname(filePath).toLowerCase()
   if (ext === '.fbx') return modelMeta(kind, humanoid)
-  if (['.png', '.tga', '.jpg', '.jpeg', '.psd', '.exr', '.tif', '.tiff'].includes(ext)) return textureMeta(filePath)
+  if (['.png', '.tga', '.jpg', '.jpeg', '.psd', '.exr', '.hdr', '.tif', '.tiff'].includes(ext)) return textureMeta(filePath)
   return null
 }
 

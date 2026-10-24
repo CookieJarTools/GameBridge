@@ -1,6 +1,6 @@
 {
   "name": "gamebridge",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A modern launcher for Unity, Unreal, and custom game engines.",
   "main": "./out/main/index.js",
   "type": "module",

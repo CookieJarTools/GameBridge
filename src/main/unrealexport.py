@@ -9,6 +9,9 @@ import unreal
 
 PREFIX = "GAMEBRIDGE|"
 
+# PNG only holds 8-bit colour; HDR, 16-bit and float textures need another format.
+TEXTURE_FALLBACKS = (".tga", ".exr", ".hdr")
+
 
 def report(**fields):
     print(PREFIX + json.dumps(fields), flush=True)
@@ -120,18 +123,7 @@ def write_json(path, data):
         json.dump(data, f)
 
 
-def export(asset):
-    obj = unreal.load_asset(asset["objectPath"])
-    if obj is None:
-        return "Couldn't load the asset"
-
-    out = asset["out"]
-    os.makedirs(os.path.dirname(out), exist_ok=True)
-
-    if asset["kind"] == "material":
-        write_json(out, describe_material(obj))
-        return None
-
+def run_task(obj, out, kind):
     task = unreal.AssetExportTask()
     task.object = obj
     task.filename = out
@@ -139,18 +131,38 @@ def export(asset):
     task.prompt = False
     task.replace_identical = True
     if out.lower().endswith(".fbx"):
-        task.options = fbx_options(asset["kind"])
+        task.options = fbx_options(kind)
+    return unreal.Exporter.run_asset_export_task(task) and os.path.exists(out)
 
-    if not unreal.Exporter.run_asset_export_task(task):
-        return "Unreal's exporter refused it"
-    if not os.path.exists(out):
-        return "Unreal reported success but wrote no file"
+
+def export(asset):
+    """Returns (error, file written)."""
+    obj = unreal.load_asset(asset["objectPath"])
+    if obj is None:
+        return "Couldn't load the asset", None
+
+    out = asset["out"]
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+
+    if asset["kind"] == "material":
+        if not isinstance(obj, unreal.MaterialInterface):
+            return "Not a material (it's a %s), so there's nothing to rebuild" % obj.get_class().get_name(), None
+        write_json(out, describe_material(obj))
+        return None, out
+
+    if not run_task(obj, out, asset["kind"]):
+        if asset["kind"] != "texture":
+            return "Unreal's exporter refused it", None
+        base = os.path.splitext(out)[0]
+        out = next((base + ext for ext in TEXTURE_FALLBACKS if run_task(obj, base + ext, asset["kind"])), None)
+        if out is None:
+            return "Unreal couldn't export this texture as PNG, TGA, EXR or HDR", None
 
     # Which material each slot uses, so Unity can hook the rebuilt materials up.
     slots = mesh_slots(obj)
     if slots is not None:
         write_json(out + ".slots.json", slots)
-    return None
+    return None, out
 
 
 def main():
@@ -161,10 +173,10 @@ def main():
     report(event="start", total=len(assets))
     for i, asset in enumerate(assets):
         try:
-            error = export(asset)
+            error, written = export(asset)
         except Exception as e:  # keep going; one bad asset shouldn't stop the batch
-            error = str(e)
-        report(event="asset", index=i, objectPath=asset["objectPath"], ok=error is None, error=error)
+            error, written = str(e), None
+        report(event="asset", index=i, objectPath=asset["objectPath"], ok=error is None, error=error, file=written)
     report(event="done")
 
 
