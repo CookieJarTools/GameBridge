@@ -4,6 +4,7 @@ import type { ProjectVersion, UnityBuildProfile } from '@shared/types'
 import { UNITY_BUILD_TARGETS, defaultBuildTarget } from '@shared/buildtargets'
 import { findEngine } from '@shared/engines'
 import { useStore } from '../store'
+import { PLATFORM } from '../lib/platform'
 
 /**
  * Target/output picker for a headless build. Unity gets the full platform list;
@@ -28,7 +29,7 @@ export function NewBuildModal({
   const engine = settings && project ? findEngine(settings.engines, project.engineId) : undefined
   const isUnity = engine?.kind === 'unity'
 
-  const [target, setTarget] = useState(defaultBuildTarget(navigator.platform.toLowerCase().includes('mac') ? 'darwin' : 'win32').id)
+  const [target, setTarget] = useState(defaultBuildTarget(PLATFORM).id)
   const [development, setDevelopment] = useState(false)
   const [output, setOutput] = useState('')
   const [touchedOutput, setTouchedOutput] = useState(false)

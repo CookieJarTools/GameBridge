@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { RefreshCw, DownloadCloud, Loader2, Check, X, ChevronDown, ExternalLink } from 'lucide-react'
 import type { UnityRelease } from '@shared/types'
 import { useStore } from '../store'
+import { IS_WINDOWS } from '../lib/platform'
 
 interface InstallState {
   log: string[]
@@ -9,10 +10,11 @@ interface InstallState {
   ok?: boolean
 }
 
+// The Hub only offers Windows IL2CPP on a Windows machine; Linux gets the Mono backend.
 const MODULES = [
   { id: 'android', label: 'Android' },
   { id: 'webgl', label: 'WebGL' },
-  { id: 'windows-il2cpp', label: 'Windows IL2CPP' },
+  IS_WINDOWS ? { id: 'windows-il2cpp', label: 'Windows IL2CPP' } : { id: 'windows-mono', label: 'Windows (Mono)' },
   { id: 'linux-il2cpp', label: 'Linux IL2CPP' }
 ]
 
@@ -202,16 +204,25 @@ export function UnityEditorsSection(): JSX.Element {
 
       {/* Unreal note */}
       <div className="pt-3 border-t border-line">
-        <p className="text-xs text-fg-subtle flex items-center gap-2">
-          <X size={13} className="text-fg-faint" />
-          Unreal engine versions install through the Epic Games Launcher — no CLI is available.
-          <button
-            onClick={() => window.gamebridge.openExternal('com.epicgames.launcher://apps')}
-            className="text-accent hover:underline flex items-center gap-0.5"
-          >
-            Open Epic <ExternalLink size={11} />
-          </button>
-        </p>
+        {IS_WINDOWS ? (
+          <p className="text-xs text-fg-subtle flex items-center gap-2">
+            <X size={13} className="text-fg-faint" />
+            Unreal engine versions install through the Epic Games Launcher — no CLI is available.
+            <button
+              onClick={() => window.gamebridge.openExternal('com.epicgames.launcher://apps')}
+              className="text-accent hover:underline flex items-center gap-0.5"
+            >
+              Open Epic <ExternalLink size={11} />
+            </button>
+          </p>
+        ) : (
+          <p className="text-xs text-fg-subtle flex items-center gap-2">
+            <X size={13} className="text-fg-faint" />
+            Unreal on Linux is a source build or Epic's Linux zip. Engines registered in
+            ~/.config/Epic/UnrealEngine/Install.ini, or unpacked in your home folder, ~/Unreal or
+            /opt, are picked up by Auto-detect engines.
+          </p>
+        )}
       </div>
     </div>
   )

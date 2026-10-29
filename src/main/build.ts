@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from 'child_process'
 import { randomUUID } from 'crypto'
-import { dirname, sep } from 'path'
+import { delimiter, dirname, sep } from 'path'
 import type {
   AppData,
   BuildPhaseId,
@@ -24,6 +24,7 @@ import { nextVersion, readProjectVersion, writeProjectVersion } from './version'
 import { promises as fsp } from 'fs'
 import { detachedSpawn, exists, fillTokens, resolveEngineExe } from './resolve'
 import { startRun } from './run'
+import { killTree } from './platform'
 import { reportPathFor, saveRecord } from './buildhistory'
 import {
   clearStaleLock,
@@ -118,8 +119,7 @@ function parsePercent(line: string): number | undefined {
 function buildEnv(engineId: string, data: AppData): NodeJS.ProcessEnv {
   const bin = data.settings.toolchainBinByEngine[engineId]?.trim()
   if (!bin) return process.env
-  const s = process.platform === 'win32' ? ';' : ':'
-  return { ...process.env, PATH: bin + s + (process.env.PATH ?? '') }
+  return { ...process.env, PATH: bin + delimiter + (process.env.PATH ?? '') }
 }
 
 function log(record: BuildRecord, line: string, stream: 'out' | 'err' | 'sys' = 'out', percent?: number): void {
@@ -728,12 +728,9 @@ export function stopBuild(projectId: string): void {
   }
   const child = active.child
   if (!child) return
-  if (process.platform === 'win32' && child.pid) {
-    // Kill the whole process tree (shell + build tool children).
-    spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'])
-  } else {
-    child.kill()
-  }
+  // Kill the whole process tree (shell + build tool children).
+  if (child.pid) killTree(child.pid)
+  else child.kill()
 }
 
 /** Kill everything on app shutdown, and take our injected scripts with us. */

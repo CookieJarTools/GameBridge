@@ -18,6 +18,7 @@ import type { Engine, IDE, Settings } from '@shared/types'
 import { useStore } from '../store'
 import { BUILTIN_ENGINES, DEFAULT_BUILD_TEMPLATES, allEngines, nextEngineColor } from '@shared/engines'
 import { UnityEditorsSection } from './UnityEditorsSection'
+import { IS_WINDOWS } from '../lib/platform'
 
 export function SettingsView(): JSX.Element {
   const settings = useStore((s) => s.settings)
@@ -116,7 +117,7 @@ export function SettingsView(): JSX.Element {
                     s.engineConfig.unityEditorsRoot = e.target.value || undefined
                   })
                 }
-                placeholder="C:\Program Files\Unity\Hub\Editor"
+                placeholder={IS_WINDOWS ? 'C:\\Program Files\\Unity\\Hub\\Editor' : '~/Unity/Hub/Editor'}
                 className="input"
               />
               <button
@@ -365,7 +366,7 @@ export function SettingsView(): JSX.Element {
                           else delete s.toolchainBinByEngine[eng.id]
                         })
                       }
-                      placeholder="C:\msys64\ucrt64\bin;C:\msys64\usr\bin"
+                      placeholder={IS_WINDOWS ? 'C:\\msys64\\ucrt64\\bin;C:\\msys64\\usr\\bin' : '/opt/toolchain/bin:/usr/local/bin'}
                       className="input font-mono text-xs"
                     />
                     <button
@@ -617,7 +618,7 @@ function CustomEngineEditor({
       <ExeField
         value={engine.executable ?? ''}
         onChange={(v) => onChange({ executable: v })}
-        placeholder='Executable to run — tokens allowed, e.g. {path}\Bin\Release\Game.exe'
+        placeholder={`Executable to run — tokens allowed, e.g. ${IS_WINDOWS ? '{path}\\Bin\\Release\\Game.exe' : '{path}/bin/Release/Game'}`}
       />
       <input
         value={engine.argsTemplate ?? ''}

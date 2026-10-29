@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto'
 import { join } from 'path'
 import type { BuildRecord, PublishStartResult, PublishTarget, Project } from '@shared/types'
 import { exists, splitArgs } from './resolve'
+import { killTree } from './platform'
 
 /**
  * Sending a finished build somewhere.
@@ -280,11 +281,7 @@ export function cancelUpload(uploadId: string): void {
   const active = running.get(uploadId)
   if (!active?.child?.pid) return
   active.cancelled = true
-  if (process.platform === 'win32') {
-    spawn('taskkill', ['/pid', String(active.child.pid), '/T', '/F'], { windowsHide: true })
-  } else {
-    active.child.kill()
-  }
+  killTree(active.child.pid)
 }
 
 export function cancelAllUploads(): void {

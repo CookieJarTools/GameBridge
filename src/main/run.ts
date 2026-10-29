@@ -3,6 +3,7 @@ import { app } from 'electron'
 import { openSync, readSync, closeSync, statSync, writeFileSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import { forgetLaunchedEditor, rememberLaunchedEditor } from './editorlock'
+import { killTree } from './platform'
 import type { EngineKind } from '@shared/types'
 
 type Emit = (channel: string, payload: unknown) => void
@@ -46,9 +47,12 @@ export function newRunLogPath(projectId: string): string {
   return path
 }
 
-/** Format an exit code, decoding common Windows NTSTATUS crash codes. */
+/** Signals that mean the process crashed rather than being asked to stop. */
+const CRASH_SIGNALS = new Set(['SIGSEGV', 'SIGABRT', 'SIGBUS', 'SIGFPE', 'SIGILL'])
+
+/** Format an exit code, decoding common Windows NTSTATUS crash codes and Linux crash signals. */
 function describeExit(code: number | null, signal: string | null): string {
-  if (signal) return `terminated (${signal})`
+  if (signal) return CRASH_SIGNALS.has(signal) ? `crashed — ${signal}` : `terminated (${signal})`
   if (code == null) return 'exited'
   if (code === 0) return 'exited cleanly (code 0)'
   const u = code >>> 0
@@ -210,10 +214,6 @@ export function reattachRun(projectId: string): { ok: boolean; message: string }
   watch(projectId, handle)
   readNew(projectId, handle) // catch up immediately rather than after a tick
   return { ok: true, message: 'Watching the editor log again.' }
-}
-
-function killTree(pid: number): void {
-  if (process.platform === 'win32') spawn('taskkill', ['/pid', String(pid), '/T', '/F'])
 }
 
 export function stopRun(projectId: string): void {

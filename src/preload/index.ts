@@ -49,6 +49,7 @@ import type {
 } from '@shared/types'
 
 const api = {
+  platform: process.platform,
   getData: (): Promise<AppData> => ipcRenderer.invoke('data:get'),
   saveSettings: (settings: Settings): Promise<Settings> =>
     ipcRenderer.invoke('settings:save', settings),

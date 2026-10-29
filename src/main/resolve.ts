@@ -2,6 +2,7 @@ import { promises as fs } from 'fs'
 import { join, dirname } from 'path'
 import { spawn } from 'child_process'
 import type { AppData, Engine, EngineConfig, Project } from '@shared/types'
+import { UNITY_EDITOR_BINARY } from './platform'
 
 /** Launch a detached process; the child outlives GameBridge. Returns its pid. */
 export function detachedSpawn(exe: string, args: string[], cwd?: string): number | undefined {
@@ -55,7 +56,7 @@ export async function resolveUnityEditor(
   const root = config.unityEditorsRoot
   if (!root) return undefined
   if (version) {
-    const exact = join(root, version, 'Editor', 'Unity.exe')
+    const exact = join(root, version, 'Editor', UNITY_EDITOR_BINARY)
     if (await exists(exact)) return exact
   }
   try {
@@ -63,12 +64,12 @@ export async function resolveUnityEditor(
     if (version) {
       const prefixed = dirs.find((d) => d.startsWith(version.split('.')[0]))
       if (prefixed) {
-        const p = join(root, prefixed, 'Editor', 'Unity.exe')
+        const p = join(root, prefixed, 'Editor', UNITY_EDITOR_BINARY)
         if (await exists(p)) return p
       }
     }
     for (const d of dirs) {
-      const p = join(root, d, 'Editor', 'Unity.exe')
+      const p = join(root, d, 'Editor', UNITY_EDITOR_BINARY)
       if (await exists(p)) return p
     }
   } catch {

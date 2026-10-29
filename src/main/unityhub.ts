@@ -1,27 +1,41 @@
 import { spawn, execFile, type ChildProcess } from 'child_process'
 import { promisify } from 'util'
+import { homedir } from 'os'
 import { join } from 'path'
 import type { UnityEditor, UnityRelease } from '@shared/types'
 import { exists } from './resolve'
+import { findOnPath, IS_WINDOWS, killTree } from './platform'
 
 const execFileAsync = promisify(execFile)
 
 const PF = process.env['ProgramFiles'] || 'C:\\Program Files'
 const PFX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)'
 
-/** Locate "Unity Hub.exe". */
+/**
+ * Locate the Hub: "Unity Hub.exe" on Windows; on Linux the package install
+ * (/opt/unityhub, usually also on PATH as unityhub) or Unity's AppImage.
+ */
 export async function findUnityHub(explicit?: string): Promise<string | undefined> {
-  const candidates = [
-    explicit,
-    join(PF, 'Unity Hub', 'Unity Hub.exe'),
-    join(PFX86, 'Unity Hub', 'Unity Hub.exe')
-  ].filter(Boolean) as string[]
-  for (const c of candidates) if (await exists(c)) return c
+  const candidates = IS_WINDOWS
+    ? [explicit, join(PF, 'Unity Hub', 'Unity Hub.exe'), join(PFX86, 'Unity Hub', 'Unity Hub.exe')]
+    : [
+        explicit,
+        await findOnPath(['unityhub']),
+        '/opt/unityhub/unityhub',
+        join(homedir(), 'Applications', 'Unity Hub.AppImage'),
+        join(homedir(), 'Applications', 'UnityHub.AppImage')
+      ]
+  for (const c of candidates.filter(Boolean) as string[]) if (await exists(c)) return c
   return undefined
 }
 
+/** The Hub's headless switch: Unity documents it after a `--` on Windows and bare on Linux. */
+function headless(args: string[]): string[] {
+  return IS_WINDOWS ? ['--', '--headless', ...args] : ['--headless', ...args]
+}
+
 async function hubJson<T>(hub: string, args: string[]): Promise<T> {
-  const { stdout } = await execFileAsync(hub, ['--', '--headless', ...args], {
+  const { stdout } = await execFileAsync(hub, headless(args), {
     windowsHide: true,
     maxBuffer: 8 * 1024 * 1024
   })
@@ -69,7 +83,7 @@ export function installEditor(
     onDone(false, 'That version is already installing.')
     return
   }
-  const args = ['--', '--headless', 'install', '--version', version]
+  const args = headless(['install', '--version', version])
   for (const m of modules) args.push('--module', m)
   if (modules.length) args.push('--childModules')
 
@@ -91,9 +105,6 @@ export function installEditor(
 
 export function cancelInstall(version: string): void {
   const child = installing.get(version)
-  if (child?.pid && process.platform === 'win32') {
-    spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'])
-  } else {
-    child?.kill()
-  }
+  if (child?.pid) killTree(child.pid)
+  else child?.kill()
 }

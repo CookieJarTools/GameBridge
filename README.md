@@ -4,12 +4,12 @@
 
 <p align="center">
   <a href="https://github.com/CookieJarTools/GameBridge/releases/latest"><img src="https://img.shields.io/github/v/release/CookieJarTools/GameBridge?include_prereleases&label=download&color=5e6ad2&style=flat-square" alt="Latest release"></a>
-  <img src="https://img.shields.io/badge/platform-Windows-3a3d45?style=flat-square" alt="Windows">
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-3a3d45?style=flat-square" alt="Windows | Linux">
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/licence-PolyForm%20Shield-3a3d45?style=flat-square" alt="Licence"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/CookieJarTools/GameBridge/releases/latest"><b>Download for Windows</b></a>
+  <a href="https://github.com/CookieJarTools/GameBridge/releases/latest"><b>Download for Windows or Linux</b></a>
   &nbsp;·&nbsp;
   <a href="#getting-started">Getting started</a>
   &nbsp;·&nbsp;
@@ -24,7 +24,7 @@ GameBridge keeps all your game projects in one list, whatever engine they use. U
 
 Point GameBridge at the folders where your projects live and it finds them. Every project sits in a single table with its engine, version, git branch and tags. You can sort by any column, resize the columns, filter by engine or tag, and search by name or path. Favourites stay at the top.
 
-Click a row to open the project. The launch button on the right also has a second half that opens the project together with the IDE you've set for that engine (VS Code, Rider and Visual Studio are found automatically).
+Click a row to open the project. The launch button on the right also has a second half that opens the project together with the IDE you've set for that engine (VS Code, Rider and the other JetBrains IDEs, and Visual Studio on Windows, are found automatically).
 
 ### Your own engines
 
@@ -77,16 +77,37 @@ Fab, the Unity Asset Store, Sketchfab, itch.io, Poly Haven, Kenney and OpenGameA
 
 ## Getting started
 
-1. Download **GameBridge-Setup-&lt;version&gt;.exe** from the [latest release](https://github.com/CookieJarTools/GameBridge/releases/latest) and run it. You can pick where it installs, and it adds Start menu and desktop shortcuts. No admin rights needed.
-2. Open **Settings** and press **Auto-detect engines** and **Auto-detect IDEs**.
-3. Add the folders that contain your projects as **scan roots**.
-4. Go back to **Library** and press **Scan**.
+Install it from the [latest release](https://github.com/CookieJarTools/GameBridge/releases/latest):
 
-Windows only for now. The installer isn't code-signed yet, so SmartScreen will warn you the first time. Choose **More info**, then **Run anyway**.
+- **Windows:** download **GameBridge-Setup-&lt;version&gt;.exe** and run it. You can pick where it installs, and it adds Start menu and desktop shortcuts. No admin rights needed. The installer isn't code-signed yet, so SmartScreen will warn you the first time. Choose **More info**, then **Run anyway**.
+- **Arch Linux:** download **GameBridge-&lt;version&gt;-x86_64.pkg.tar.xz** and install it with pacman. It goes in `/opt/GameBridge`, with a `gamebridge` command and an app menu entry.
+
+  ```bash
+  sudo pacman -U GameBridge-<version>-x86_64.pkg.tar.xz
+  ```
+
+- **Any other Linux:** download **GameBridge-&lt;version&gt;.AppImage**, make it executable and run it. AppImages need FUSE 2 (`fuse2` on Arch, `libfuse2` on Debian and Ubuntu).
+
+  ```bash
+  chmod +x GameBridge-<version>.AppImage
+  ```
+
+Then:
+
+1. Open **Settings** and press **Auto-detect engines** and **Auto-detect IDEs**.
+2. Add the folders that contain your projects as **scan roots**.
+3. Go back to **Library** and press **Scan**.
+
+### On Linux
+
+- **Unity** editors are found through Unity Hub (the `unityhub` package, or Unity's AppImage in `~/Applications`) and in `~/Unity/Hub/Editor`.
+- **Unreal** has no Epic launcher on Linux, so GameBridge looks for engines in two places: source builds registered in `~/.config/Epic/UnrealEngine/Install.ini`, and engine folders (a source checkout or Epic's Linux zip, unpacked) directly inside your home folder, `~/Unreal`, `~/Epic Games` or `/opt`. For an engine kept somewhere else, add a line for it under `[Installations]` in that file, as `<any unique name>=<engine folder>`.
+- **IDEs**: VS Code (or Code - OSS, or VSCodium) from your PATH, and JetBrains IDEs from Toolbox, `/opt` or your PATH.
+- Unpacking Fab `.zip` downloads uses `bsdtar`, which Arch always has. On other distributions it's in the `libarchive-tools` package.
 
 ## Building from source
 
-You need Node.js 18 or newer and Git.
+You need Node.js 20.19 or newer and Git. On Arch, `sudo pacman -S nodejs npm git`.
 
 ```bash
 npm install
@@ -98,9 +119,13 @@ npm run dev
 | `npm run dev` | Run with hot reload |
 | `npm run build` | Build production bundles into `out/` |
 | `npm run typecheck` | Type-check the main process and the renderer |
-| `npm run dist` | Build the Windows installer, `dist/<version>/GameBridge-Setup-<version>.exe` |
+| `npm run dist` | Build the installer for the system you're on, into `dist/<version>/` |
+| `npm run dist:win` | Build the Windows installer, `GameBridge-Setup-<version>.exe` |
+| `npm run dist:linux` | Build the Linux packages, `GameBridge-<version>.AppImage` and `GameBridge-<version>-x86_64.pkg.tar.xz` |
 | `npm run generate:icons` | Rebuild `build/icon.ico` and `icon.png` from `build/icon.svg` |
 | `npm run generate:banner` | Rebuild `docs/banner.png` from `scripts/banner/banner.html` |
+
+`node_modules` holds native binaries for the system it was installed on, so after switching between Windows and Linux, run `npm ci` before building.
 
 Built with Electron, React, TypeScript, Vite, Tailwind and Zustand.
 
@@ -115,8 +140,8 @@ The sections below go into more detail. You don't need any of this to use the ap
 
 | Engine | How it opens a project |
 | --- | --- |
-| Unity | Finds `Unity.exe` for the project's version (from Unity Hub's editor list or the editors folder) and runs `Unity.exe -projectPath "<path>"` |
-| Unreal | Uses a matching `UnrealEditor.exe` if one is installed, otherwise the Windows file association for `.uproject` |
+| Unity | Finds `Unity.exe` (`Unity` on Linux) for the project's version, from Unity Hub's editor list or the editors folder, and runs it with `-projectPath "<path>"` |
+| Unreal | Uses a matching `UnrealEditor.exe` (`UnrealEditor` on Linux) if one is installed, otherwise the system's file association for `.uproject` |
 | Custom | Runs your executable with your argument template, filling in `{exe}`, `{path}`, `{file}` and `{args}` |
 
 IDEs get `{path}`, `{sln}` (the first `.sln` in the project, or the folder if there isn't one) or `{file}`.
@@ -152,6 +177,8 @@ Unity.exe -batchmode -projectPath <path> -buildTarget <target>
 Unity won't build a project that's open in another editor. Before building, GameBridge checks `Library/EditorInstance.json`, plus any editor it launched itself, for a live process holding the project. What happens next depends on the setting: ask (the default), always close, or never close.
 
 It closes the editor with `CloseMainWindow()`, the same message Windows sends when you click the X, so Unity can still ask about unsaved changes. Plain `taskkill` without `/F` turned out to be unreliable here. In testing, Unity ignored it for over a minute, while `CloseMainWindow()` closed it in about a second. If the editor is still open after 30 seconds, you're asked whether to force it closed or cancel the build.
+
+On Linux there's no equivalent of `CloseMainWindow()` that works under Wayland, so the editor is sent `SIGTERM` instead. Whether Unity still offers to save changes when closed that way hasn't been tested yet.
 
 When the build ends, whatever the result, the project is reopened the normal way.
 
@@ -205,7 +232,7 @@ GameBridge reads each `.uasset` header itself (the package summary, name table a
 | Animation sequence | `.fbx` | Exported by Unreal, imported into Unity as a Humanoid clip |
 | Material | `.mat` | Described by Unreal, rebuilt by Unity (see below) |
 
-Unreal is run as `UnrealEditor-Cmd.exe <project> -run=pythonscript -script=<export script>`, with the Python plugin switched on for that run only, so the `.uproject` isn't modified. It needs the engine version the project was made with to be installed; GameBridge finds engines through the Epic launcher's install list, so engines in custom folders are found too. If Unreal crashes on an asset, that asset is reported as failed and Unreal is started again for the rest.
+Unreal is run as `UnrealEditor-Cmd.exe <project> -run=pythonscript -script=<export script>`, with the Python plugin switched on for that run only, so the `.uproject` isn't modified. It needs the engine version the project was made with to be installed; GameBridge finds engines through the Epic launcher's install list, so engines in custom folders are found too. On Linux it's `UnrealEditor-Cmd`, from the engines found as described under [On Linux](#on-linux). If Unreal crashes on an asset, that asset is reported as failed and Unreal is started again for the rest.
 
 Import settings are written as `.meta` files before each asset lands, so Unity imports it correctly the first time. These were checked by importing the UE 5.8 mannequin into Unity 6000.4:
 

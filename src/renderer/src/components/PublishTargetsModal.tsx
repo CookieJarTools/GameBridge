@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Plus, Rocket, Trash2, X } from 'lucide-react'
 import type { Project, PublishKind, PublishTarget } from '@shared/types'
 import { useStore } from '../store'
+import { IS_WINDOWS } from '../lib/platform'
 
 const KIND_LABEL: Record<PublishKind, string> = {
   steam: 'Steam',
@@ -128,7 +129,7 @@ export function PublishTargetsModal({
                     label={selected.kind === 'steam' ? 'steamcmd' : 'butler'}
                     hint={
                       selected.kind === 'steam'
-                        ? 'From the Steamworks SDK, usually tools/ContentBuilder/builder/steamcmd.exe.'
+                        ? `From the Steamworks SDK, usually ${IS_WINDOWS ? 'tools/ContentBuilder/builder/steamcmd.exe' : 'tools/ContentBuilder/builder_linux/steamcmd.sh'}.`
                         : 'The itch.io upload tool. Install it once and point here.'
                     }
                   >

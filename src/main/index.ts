@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { join, basename } from 'path'
 import { hardenWebContents, lockAppWindow, openExternalSafe } from './security'
+import { IS_WINDOWS } from './platform'
 import { readFile } from 'fs/promises'
 import type {
   AppData,
@@ -90,9 +91,10 @@ type Emit = (channel: string, payload: unknown) => void
 let emitInstall: Emit = () => {}
 
 /** GameBridge window/taskbar icon — bundled beside the app resources when packaged. */
+const ICON_FILE = IS_WINDOWS ? 'icon.ico' : 'icon.png'
 const ICON_PATH = app.isPackaged
-  ? join(process.resourcesPath, 'icon.ico')
-  : join(__dirname, '../../build/icon.ico')
+  ? join(process.resourcesPath, ICON_FILE)
+  : join(__dirname, '../../build', ICON_FILE)
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -342,7 +344,8 @@ function registerIpc(): void {
   ipcMain.handle('dialog:pick-exe', async (): Promise<string | null> => {
     const res = await dialog.showOpenDialog({
       properties: ['openFile'],
-      filters: [{ name: 'Executables', extensions: ['exe', 'bat', 'cmd', 'lnk'] }]
+      // Linux executables carry no extension to filter on.
+      filters: IS_WINDOWS ? [{ name: 'Executables', extensions: ['exe', 'bat', 'cmd', 'lnk'] }] : []
     })
     return res.canceled ? null : res.filePaths[0] ?? null
   })

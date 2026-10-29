@@ -1,11 +1,13 @@
 {
   "name": "gamebridge",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "A modern launcher for Unity, Unreal, and custom game engines.",
   "main": "./out/main/index.js",
   "type": "module",
   "author": "Joseph Cook",
   "license": "PolyForm-Shield-1.0.0",
+  "homepage": "https://github.com/CookieJarTools/GameBridge",
+  "desktopName": "gamebridge.desktop",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
@@ -15,7 +17,9 @@
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "generate:icons": "node scripts/generate-icons.mjs",
     "generate:banner": "electron scripts/render-banner.mjs",
-    "dist": "electron-vite build && electron-builder --win"
+    "dist": "electron-vite build && electron-builder",
+    "dist:win": "electron-vite build && electron-builder --win",
+    "dist:linux": "electron-vite build && electron-builder --linux"
   },
   "build": {
     "appId": "com.gamebridge.launcher",
@@ -27,13 +31,16 @@
     "files": [
       "out/**"
     ],
-    "extraResources": [
-      "build/icon.ico"
-    ],
     "win": {
       "icon": "build/icon.ico",
       "target": [
         "nsis"
+      ],
+      "extraResources": [
+        {
+          "from": "build/icon.ico",
+          "to": "icon.ico"
+        }
       ]
     },
     "nsis": {
@@ -49,6 +56,46 @@
       "shortcutName": "GameBridge",
       "uninstallDisplayName": "GameBridge",
       "runAfterFinish": true
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Development",
+      "synopsis": "Launcher for Unity, Unreal, and custom game engines",
+      "maintainer": "Joseph Cook",
+      "syncDesktopName": true,
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "pacman",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "extraResources": [
+        {
+          "from": "build/icon.png",
+          "to": "icon.png"
+        }
+      ]
+    },
+    "appImage": {
+      "artifactName": "GameBridge-${version}.AppImage"
+    },
+    "pacman": {
+      "artifactName": "GameBridge-${version}-x86_64.pkg.tar.xz",
+      "depends": [
+        "gtk3",
+        "nss",
+        "alsa-lib",
+        "xdg-utils",
+        "libarchive"
+      ]
     }
   },
   "dependencies": {

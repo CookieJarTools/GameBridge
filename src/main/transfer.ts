@@ -18,6 +18,7 @@ import { extractEmbeddedSource, readUnrealAsset } from './uasset'
 import { writeImportMeta, type MetaKind } from './unitymeta'
 import { toUnitySpec, type UnrealMaterialDescription } from './materialspec'
 import { queueMaterialBuild, type UnityMaterialManifest } from './unitymaterials'
+import { IS_WINDOWS, killTree, UNREAL_CMD_BINARY } from './platform'
 
 /**
  * Moving assets from Unreal (or a Fab download) into a Unity project.
@@ -106,7 +107,7 @@ async function resolveUnrealCmd(
     .filter((i) => versionParts(i.version)[0] === major && versionParts(i.version)[1] >= minor)
     .sort((a, b) => versionParts(a.version)[1] - versionParts(b.version)[1])
   for (const install of exact ? [exact, ...newer] : newer) {
-    const cmd = join(dirname(install.editorPath), 'UnrealEditor-Cmd.exe')
+    const cmd = join(dirname(install.editorPath), UNREAL_CMD_BINARY)
     try {
       await fs.access(cmd)
       return { cmd, version: install.version }
@@ -248,7 +249,7 @@ export function cancelTransfer(transferId: string): void {
   if (!active || active.id !== transferId) return
   active.state.cancelled = true
   const pid = active.state.child?.pid
-  if (pid) spawn('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true })
+  if (pid) killTree(pid)
 }
 
 export function cancelAllTransfers(): void {
@@ -372,10 +373,12 @@ interface ExportJobAsset {
 
 /** Args for Unreal, quoted by hand: it reads the raw command line, not argv. */
 function unrealArgs(uprojectPath: string, scriptPath: string): string[] {
+  // Windows passes these verbatim (see the spawn below), so paths carry their own quotes.
+  const quote = (s: string): string => (IS_WINDOWS ? `"${s}"` : s)
   return [
-    `"${uprojectPath}"`,
+    quote(uprojectPath),
     '-run=pythonscript',
-    `-script="${scriptPath}"`,
+    `-script=${quote(scriptPath)}`,
     // Python is off by default; this enables it for this run without touching the .uproject.
     '-EnablePlugins=PythonScriptPlugin',
     // Skeletal mesh FBX export needs render resources, which commandlets skip by default.
@@ -436,7 +439,7 @@ async function exportWithUnreal(
         const child = spawn(exe, unrealArgs(req.uprojectPath, scriptPath), {
           env: { ...process.env, GAMEBRIDGE_JOB: jobPath },
           // Verbatim so our own quoting reaches Unreal; argv0 quoted for engines under Program Files.
-          argv0: `"${exe}"`,
+          argv0: IS_WINDOWS ? `"${exe}"` : exe,
           windowsHide: true,
           windowsVerbatimArguments: true
         })
@@ -587,7 +590,8 @@ async function collectExport(
 
 // ------------------------------------------------------- fab downloads ---
 
-const TAR = join(process.env['SystemRoot'] ?? 'C:\\Windows', 'System32', 'tar.exe')
+// Windows' own tar is bsdtar, which also reads zips; GNU tar can't, so Linux asks for bsdtar by name.
+const TAR = IS_WINDOWS ? join(process.env['SystemRoot'] ?? 'C:\\Windows', 'System32', 'tar.exe') : 'bsdtar'
 const JUNK = new Set(['__macosx', '.ds_store', 'thumbs.db', 'desktop.ini'])
 const UNREAL_FILES = new Set(['.uasset', '.umap', '.uexp', '.ubulk'])
 

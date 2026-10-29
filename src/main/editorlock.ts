@@ -2,6 +2,7 @@ import { spawn } from 'child_process'
 import { promises as fs } from 'fs'
 import { join } from 'path'
 import type { EngineKind, OpenEditorInfo, Project } from '@shared/types'
+import { killTree } from './platform'
 
 /**
  * Finding — and politely closing — an editor that already has a project open.
@@ -116,15 +117,7 @@ export function requestClose(pid: number): void {
 
 /** Kill it outright. Unsaved work is lost — only ever on an explicit request. */
 export function forceClose(pid: number): void {
-  if (process.platform === 'win32') {
-    spawn('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true })
-  } else {
-    try {
-      process.kill(pid, 'SIGKILL')
-    } catch {
-      /* already gone */
-    }
-  }
+  killTree(pid)
 }
 
 /** Resolves true if the process went away within `timeoutMs`. */
