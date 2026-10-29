@@ -1,0 +1,166 @@
+# Builds the Windows installer on Windows and the Linux packages on Ubuntu,
+# then attaches them to the GitHub release for a tag. The release must already
+# exist: this workflow never creates or publishes one, and never changes its
+# pre-release or latest flags. Files with the same name are replaced.
+#
+# Pull requests that change this file get the same builds, kept as workflow
+# artifacts, with nothing attached to any release.
+
+name: Release installers
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag of an existing release, for example v0.4.0
+        required: true
+        type: string
+  pull_request:
+    paths:
+      - .github/workflows/release-installers.yml
+
+permissions:
+  contents: read
+
+env:
+  # Empty on pull requests, which build the PR's own code.
+  TAG: ${{ inputs.tag || (github.ref_type == 'tag' && github.ref_name) || '' }}
+
+concurrency:
+  group: release-installers-${{ inputs.tag || github.ref_name }}
+
+jobs:
+  check:
+    name: Check the tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG && format('refs/tags/{0}', env.TAG) || '' }}
+
+      - name: Read the version from package.json
+        id: version
+        run: |
+          version=$(jq -r .version package.json)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ -n "$TAG" ] && [ "v$version" != "$TAG" ]; then
+            echo "::error::package.json at $TAG says $version, so the files would not be named for $TAG."
+            exit 1
+          fi
+
+      - name: Check the release exists
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName > /dev/null; then
+            echo "::error::There is no release for $TAG. Create it first; this workflow only adds files to one."
+            exit 1
+          fi
+
+  build:
+    name: Build on ${{ matrix.os }}
+    needs: check
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: windows
+            script: dist:win
+            files: GameBridge-Setup-${{ needs.check.outputs.version }}.exe
+          - os: ubuntu-latest
+            artifact: linux
+            script: dist:linux
+            files: >-
+              GameBridge-${{ needs.check.outputs.version }}.AppImage
+              GameBridge-${{ needs.check.outputs.version }}-x86_64.pkg.tar.xz
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    defaults:
+      run:
+        # Bash on Windows too: PowerShell's npm shim drops the "--" before --publish.
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG && format('refs/tags/{0}', env.TAG) || '' }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install bsdtar for the pacman package
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libarchive-tools
+
+      - run: npm ci
+
+      # No token reaches this step, and --publish never stops electron-builder
+      # from trying to publish on its own when it sees CI and a tag.
+      - name: Build
+        run: npm run ${{ matrix.script }} -- --publish never
+
+      - name: Show the pacman package's metadata and files
+        if: runner.os == 'Linux'
+        run: |
+          pkg="dist/$VERSION/GameBridge-$VERSION-x86_64.pkg.tar.xz"
+          bsdtar -xOf "$pkg" .PKGINFO
+          bsdtar -tf "$pkg" | grep -v '^opt/GameBridge/locales/' | sort
+
+      # Only the named files move on, so no .blockmap or latest*.yml.
+      - name: Collect the installers
+        env:
+          FILES: ${{ matrix.files }}
+        run: |
+          mkdir installers
+          for name in $FILES; do
+            mv "dist/$VERSION/$name" installers/
+          done
+          ls -l installers
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: installers/
+          if-no-files-found: error
+          retention-days: 7
+
+  upload:
+    name: Attach to the release
+    needs: [check, build]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: installers
+          merge-multiple: true
+
+      - name: Attach the files to the existing release
+        working-directory: installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName > /dev/null; then
+            echo "::error::There is no release for $TAG. Create it, then re-run this job; the builds are kept for 7 days."
+            exit 1
+          fi
+          files=(
+            "GameBridge-Setup-$VERSION.exe"
+            "GameBridge-$VERSION.AppImage"
+            "GameBridge-$VERSION-x86_64.pkg.tar.xz"
+          )
+          sha256sum "${files[@]}"
+          gh release upload "$TAG" "${files[@]}" --clobber --repo "$GITHUB_REPOSITORY"
