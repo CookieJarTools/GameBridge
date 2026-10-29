@@ -127,6 +127,14 @@ npm run dev
 
 `node_modules` holds native binaries for the system it was installed on, so after switching between Windows and Linux, run `npm ci` before building.
 
+GitHub Actions can build the installers too, so the Windows one doesn't need a Windows machine. The [Release installers](.github/workflows/release-installers.yml) workflow builds the `.exe` on Windows and the Linux packages on Ubuntu, then attaches them to the release for a tag, replacing any files with the same names. It runs when a `v*` tag is pushed, or by hand for a tag whose release already exists:
+
+```bash
+gh workflow run release-installers.yml -f tag=v<version>
+```
+
+It never creates or publishes a release, and never changes whether a release is marked pre-release or latest, so create the release first and set those yourself.
+
 Built with Electron, React, TypeScript, Vite, Tailwind and Zustand.
 
 ## How it works
